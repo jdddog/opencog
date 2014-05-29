@@ -44,6 +44,7 @@
 #include <opencog/comboreduct/table/table.h>
 
 #include "scoring_base.h"
+#include "../moses/using.h"
 #include "../moses/types.h"
 #include "../representation/representation.h"
 

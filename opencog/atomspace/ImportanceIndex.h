@@ -41,6 +41,9 @@ class AtomTable;
  */
 class ImportanceIndex: public FixedIntegerIndex
 {
+private:
+    static UnorderedHandleSet extractOld(const AtomTable*, AttentionValue::sti_t,
+		                                   Handle, bool recursive = false);
 public:
     ImportanceIndex(void);
     void insertAtom(const AtomPtr);
@@ -54,7 +57,8 @@ public:
      * @param The old importance bin where the atom originally was.
      */
     void updateImportance(AtomPtr, int);
-    
+
+    UnorderedHandleSet decayShortTermImportance(AtomTable*);
     UnorderedHandleSet getHandleSet(const AtomTable*,
                               AttentionValue::sti_t,
                               AttentionValue::sti_t) const;
@@ -68,6 +72,10 @@ public:
      * should be placed.
      */
     static unsigned int importanceBin(short);
+
+    //! Tests whether an atom should be considered "old"
+    static bool isOld(AtomPtr a, const AttentionValue::sti_t threshold);
+
 };
 
 /** @}*/

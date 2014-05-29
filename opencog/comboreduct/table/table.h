@@ -414,12 +414,16 @@ public:
     template<typename Func>
     CTable(const Func& func, arity_t arity, int nsamples = -1);
 
-    CTable(const std::string& _olabel);
-
-    CTable(const string_seq& labs, const type_tree& tt);
+    CTable(const string_seq& labs, const type_tree& tt)
+        : tsig(tt), olabel(labs[0]), ilabels(labs)
+    {
+        ilabels.erase(ilabels.begin());
+    }
 
     CTable(const std::string& _olabel, const string_seq& _ilabels,
-           const type_tree& tt);
+           const type_tree& tt)
+        : tsig(tt), olabel(_olabel), ilabels(_ilabels)
+    {}
 
     arity_t get_arity() const { return ilabels.size(); }
 
@@ -841,10 +845,6 @@ double OTEntropy(const OTable& ot);
  *
  * @note currently, only works for boolean output columns.
  * to add enum support, cut-n-paste from CTable code below.
- *
- * XXX TODO -- this also should probably support the weight column,
- * since not all rows are important, and the ones that are not
- * important should not contribute to the MI.
  */
 template<typename FeatureSet>
 double mutualInformation(const ITable& it, const OTable& ot, const FeatureSet& fs)
@@ -1095,7 +1095,7 @@ double mutualInformationBtwSets(const CTable& ctable,
             CTable::key_type vec_u = asf_u(row.first.get_variant()),
                 vec_l = asf_l(row.first.get_variant()),
                 vec_r = asf_r(row.first.get_variant());
-            count_t row_total = row.second.total_count();
+            double row_total = row.second.total_count();
 
             // update uc, lc and rc
             uc[vec_u] += row_total;
@@ -1244,5 +1244,15 @@ protected:
 };
 
 }} // ~namespaces combo opencog
+
+
+// TODO see if we can put that under opencog combo
+namespace boost
+{
+inline size_t hash_value(const opencog::combo::complete_truth_table& tt)
+{
+    return hash_range(tt.begin(), tt.end());
+}
+} //~namespace boost
 
 #endif // _OPENCOG_TABLE_H

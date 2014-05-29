@@ -70,11 +70,6 @@ class BenchmarkModule : public Module
            false, false)
         int fullyConnectedTestConcurrent(int);
 
-        /*
-         * Performs multithreaded setSTI operations on all atoms
-         */
-        int updateSTITestConcurrent(void);
-
     public:
         BenchmarkModule(CogServer&);
         virtual ~BenchmarkModule();

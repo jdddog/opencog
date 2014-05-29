@@ -25,6 +25,7 @@
 #include <opencog/comboreduct/combo/combo.h>
 
 #include "complexity.h"
+#include "using.h"
 
 namespace opencog { namespace moses {
 

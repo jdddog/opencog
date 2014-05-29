@@ -35,6 +35,8 @@ namespace opencog { namespace combo {
 
 namespace builtin_properties {
 
+using namespace std;
+
 const char maximal_builtin_arity=3;
 
 // This singleton class stores properties of builtins.
@@ -77,6 +79,8 @@ private:
 }  // namespace builtin_properties
 
 namespace action_properties {
+
+using namespace std;
 
 const char maximal_action_arity=3;
 

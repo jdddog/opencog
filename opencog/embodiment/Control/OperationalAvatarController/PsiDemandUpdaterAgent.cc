@@ -42,7 +42,7 @@ bool PsiDemandUpdaterAgent::Demand::runUpdater(AtomSpace & atomSpace)
 #if HAVE_GUILE
 
     // Initialize scheme evaluator
-    SchemeEval* evaluator = new SchemeEval(&atomSpace);
+    SchemeEval* evaluator = new SchemeEval();
     std::string scheme_expression, scheme_return_value;
 
     scheme_expression = "( " + demandUpdater + " )";
@@ -108,7 +108,7 @@ bool PsiDemandUpdaterAgent::Demand::updateDemandGoal (AtomSpace & atomSpace, con
 #if HAVE_GUILE
 
     // Initialize scheme evaluator
-    SchemeEval* evaluator = new SchemeEval(&atomSpace);
+    SchemeEval* evaluator = new SchemeEval();
     std::string scheme_expression, scheme_return_value;
 
     // Store the updated Demand levels to AtomSpace

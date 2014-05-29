@@ -64,7 +64,6 @@ class InteractiveAgent:
 
             if result is not None:
                 print("\n----- [Output # {0}] -----".format(outputs_produced))
-                for j in output:
-                    print("-- Output:\n{0}".format(j))
+                print("-- Output:\n{0}".format(output[0]))
                 print("-- using production rule: {0}".format(rule.name))
                 print("\n-- based on this input:\n{0}".format(input))

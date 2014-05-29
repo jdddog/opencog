@@ -42,7 +42,7 @@
    along with this program; if not, write to the Free Software
    Foundation, 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 
-#if defined(HAVE_BFD) && defined(HAVE_IBERTY)
+#ifdef HAVE_BFD
 
 #include "backtrace-symbols.h"
 
@@ -397,4 +397,4 @@ oc_backtrace_symbols_fd(void *const *buffer, int size, int fd)
         free(strings);
 }
 
-#endif // defined(HAVE_BFD) && defined(HAVE_IBERTY)
+#endif // HAVE_BFD

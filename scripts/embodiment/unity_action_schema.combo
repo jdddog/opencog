@@ -9,7 +9,9 @@
 # Built-in Actions directly mapped to a schema
 #################
 
+beg(0) := beg
 sit(0) := sit
+bark(0) := bark
 sleep(0) := sleep
 jump_up(0) := jump_up
 
@@ -35,6 +37,8 @@ drop(0) := drop
 turn_to_face(1) := turn_to_face($1)
 
 say(2) := say($1 $2)
+lick(0) := lick
+lick_at(1) := lick_at($1)
 
 grab(1) := grab($1)
 eat(1) := eat($1)
@@ -49,6 +53,13 @@ step_backward(0) := step_backward
 
 play_with_grab_and_drop(1) := and_seq( goto_obj($1 2) grab($1) drop )
 
+play_without_grab_and_drop(1) := and_seq( goto_obj($1 2) 
+                                          sniff_at($1) 
+                                          bite($1) 
+                                          lick_at($1)
+                                          kick($1) 
+                                        )
+
 ##############################################
 ############ RULE ENGINE FUNCTIONS ###########
 ##############################################
@@ -56,12 +67,14 @@ play_with_grab_and_drop(1) := and_seq( goto_obj($1 2) grab($1) drop )
 eat_food(1) :=
     and_seq( goto_obj($1 2)
              drop
+             wag
              eat($1)
            )
 
 drink_water(1) :=  
     and_seq( goto_obj($1 2)
              drop 
+             wag 
              drink($1)
            )
 

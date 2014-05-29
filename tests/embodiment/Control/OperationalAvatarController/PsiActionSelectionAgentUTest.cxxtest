@@ -75,6 +75,7 @@ public:
         config().set("HEBBIAN_UPDATING_ENABLED", "false");
         config().set("IMPORTANCE_SPREADING_ENABLED", "false");
         config().set("IMPORTANCE_UPDATING_ENABLED", "false");
+        config().set("STI_DECAYING_ENABLED", "false");
         config().set("IMPORTANCE_SPREADING_ENABLED", "false");
 
         oacMock.createOAC(); 

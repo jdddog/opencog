@@ -26,6 +26,7 @@
 #define _OPENCOG_FEATURE_SELECTION_DEME_OPTIMIZE_H
 
 #include <boost/range/algorithm/sort.hpp>
+#include <boost/range/algorithm/find.hpp>
 
 #include <opencog/learning/moses/optimization/optimization.h>
 #include <opencog/learning/moses/representation/field_set.h>
@@ -63,14 +64,14 @@ feature_set_pop optimize_deme_select_feature_sets(const field_set& fields,
     for (const auto& inst : deme) {
         feature_set_pop::value_type p(select_tag()(inst).get_score(),
                                       get_feature_set(fields, inst));
-        if (std::find(fs_pop.begin(), fs_pop.end(), p) == fs_pop.end())
+        if (boost::find(fs_pop, p) == fs_pop.end())
             fs_pop.insert(p);
     }
 
     // Logger
     {
         // log its score
-        std::stringstream ss;
+        stringstream ss;
         ss << "Selected feature set has composite score: ";
         if (evals > 0)
             ss << fs_pop.begin()->first;
@@ -126,9 +127,8 @@ feature_set_pop create_deme_select_feature_sets(const CTable& ctable,
 template<typename Optimize>
 feature_set_pop moses_select_feature_sets(const CTable& ctable,
                                           Optimize& optimize,
-                                          const feature_selection_parameters& fs_params)
-{
-    fs_scorer<std::set<arity_t>> fs_sc(ctable, fs_params);
+                                          const feature_selection_parameters& fs_params) {
+    fs_scorer<set<arity_t>> fs_sc(ctable, fs_params);
     return create_deme_select_feature_sets(ctable, optimize, fs_sc, fs_params);
 }
 

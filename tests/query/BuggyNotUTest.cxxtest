@@ -36,6 +36,7 @@ class BuggyNot :  public CxxTest::TestSuite
 	private:
 		PatternMatch pm;
 		AtomSpace *as;
+		static const char* paths[];
 
 	public:
 
@@ -66,7 +67,7 @@ class BuggyNot :  public CxxTest::TestSuite
 				"opencog/dynamics/attention/libattention-types.so, "
 				"opencog/embodiment/AtomSpaceExtensions/libembodiment-types.so");
 
-			cogserver().loadModules();
+			cogserver().loadModules(paths);
 
 
 		}
@@ -85,6 +86,16 @@ class BuggyNot :  public CxxTest::TestSuite
 		void test_bugnot(void);
 };
 
+const char* BuggyNot::paths[] =
+	{
+		"./",
+		"../",
+		"../../",
+		"../../../",
+		NULL
+	};
+
+
 /*
  * This function sets up an implication link, and some data.
  */
@@ -101,7 +112,9 @@ void BuggyNot::setUp(void)
 		"opencog/dynamics/attention/attention_types.scm, "
 		"opencog/embodiment/AtomSpaceExtensions/embodiment_types.scm");
 
-	load_scm_files_from_config(*as);
+	// Blindly search a bunch of paths hoping to find the files
+	// in one of them ...
+	load_scm_files_from_config(*as, paths);
 }
 
 #define getlink(hand,pos) as->getOutgoing(hand,pos)
@@ -115,10 +128,10 @@ void BuggyNot::test_bugnot(void)
 	logger().debug("BEGIN TEST: %s", __FUNCTION__);
 
 	config().set("SCM_PRELOAD", "tests/query/buggy-not.scm");
-	load_scm_files_from_config(*as);
+	load_scm_files_from_config(*as, paths);
 
 	// Create an implication link that will be tested.
-	SchemeEval* eval = new SchemeEval(as);
+	SchemeEval* eval = new SchemeEval();
 	Handle same_rule = eval->apply("is-same-rule", Handle::UNDEFINED);
 	Handle trans_rule = eval->apply("transitive-rule", Handle::UNDEFINED);
 	delete eval;

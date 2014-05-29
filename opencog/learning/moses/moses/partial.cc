@@ -131,12 +131,12 @@ cout<<"duuude end with prefix_count=" << _prefix_count <<" table_size=" << tcoun
 /// predicates are "good enough".  If we find one that is, then trim
 /// the scoring tables, and return (so as to run moses on the smaller
 /// problem).
-bool partial_solver::eval_candidates(const scored_combo_tree_set& cands)
+bool partial_solver::eval_candidates(const pbscored_combo_tree_set& cands)
 {
     logger().info() << "well-enough received " << cands.size() << " candidates";
     _most_good = 0;
     for (auto &item : cands) {
-        const combo_tree& cand = item.get_tree();
+        const combo_tree& cand = get_tree(item);
         eval_candidate(cand);
     }
 
@@ -154,7 +154,7 @@ bool partial_solver::eval_candidates(const scored_combo_tree_set& cands)
 /// of the pieces we've accumulated, and feed those back into the main
 /// algo as exemplars.  The main algo will realize that it's out of time,
 /// it will just score these, print them, and then all is done.
-void partial_solver::final_cleanup(const metapopulation& cands)
+void partial_solver::final_cleanup(const pbscored_combo_tree_ptr_set& cands)
 {
     logger().info() << "well-enough ending with " << cands.size()
                     << " exemplars. Prefix count= " << _prefix_count
@@ -164,7 +164,7 @@ void partial_solver::final_cleanup(const metapopulation& cands)
     // and feed them back in as exemplars, for scoring.
     _exemplars.clear();
     for (auto &item : cands) {
-        combo_tree cand = item.get_tree();
+        combo_tree cand = get_tree(item);
         sib_it ldr = _leader.begin();
         sib_it cit = cand.begin();
         cit = cit.begin();
@@ -249,10 +249,10 @@ void partial_solver::trim_table(std::vector<CTable>& tabs,
 
 /// Refresh the exemplars list.  Basically, just copy the entire
 /// metapopulation from the previous run.
-void partial_solver::refresh(const metapopulation& cands)
+void partial_solver::refresh(const pbscored_combo_tree_ptr_set& cands)
 {
     for (const auto &item : cands)
-        _exemplars.push_back(item.get_tree());
+        _exemplars.push_back(get_tree(item));
 }
 
 /// Evaluate a single candidate

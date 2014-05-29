@@ -26,6 +26,7 @@
 
 #include <opencog/util/RandGen.h>
 
+#include "using.h"
 #include <opencog/comboreduct/combo/vertex.h>
 
 namespace opencog { namespace reduct {

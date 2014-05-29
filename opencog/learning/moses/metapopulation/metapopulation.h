@@ -27,14 +27,27 @@
 
 #include <atomic>
 #include <mutex>
-#include <unordered_map>
-#include <unordered_set>
 
+#include <boost/unordered_set.hpp>
 #include <boost/logic/tribool.hpp>
+#include <boost/accumulators/accumulators.hpp>
+#include <boost/accumulators/statistics/stats.hpp>
+#include <boost/accumulators/statistics/count.hpp>
+#include <boost/accumulators/statistics/mean.hpp>
+#include <boost/accumulators/statistics/variance.hpp>
+#include <boost/accumulators/statistics/min.hpp>
+#include <boost/accumulators/statistics/max.hpp>
 
+#include <opencog/comboreduct/combo/combo.h>
+#include <opencog/comboreduct/reduct/reduct.h>
+
+#include "../representation/instance_set.h"
+#include "../representation/representation.h"
 #include "../optimization/optimization.h"
-#include "metapop_params.h"
+#include "../scoring/scoring.h"
+#include "../moses/types.h"
 #include "deme_expander.h"
+#include "feature_selector.h"
 
 #define EVALUATED_ALL_AVAILABLE 1234567
 
@@ -45,6 +58,12 @@
 namespace opencog {
 namespace moses {
 
+using std::pair;
+using std::make_pair;
+using boost::logic::tribool;
+using boost::logic::indeterminate;
+using namespace combo;
+
 void print_stats_header (optim_stats *os, bool diversity_enabled);
 
 /**
@@ -54,20 +73,24 @@ void print_stats_header (optim_stats *os, bool diversity_enabled);
  *
  * The metapopulation is updated in iterations. In each iteration, one
  * of its elements is selected as an exemplar. The exemplar is then
- * decorated with knobs and optimized, to create a new deme.  Suitably
- * high-scoring members of the deme are then folded back into the
- * metapopulation.  At this point, the metapopulation may be pruned,
- * to keep it's size manageable.
+ * decorated with knobs and optimized, to create a new deme.  Members
+ * of the deme are then folded back into the metapopulation.
  *
  * NOTE:
- *   cscore_base = scoring function (output composite (combined) scores)
+ *   cscore_base = scoring function (output composite scores)
  *   bscore_base = behavioral scoring function (output behaviors)
  */
-struct metapopulation
+struct metapopulation : pbscored_combo_tree_ptr_set
 {
-    // XXX shouldn't this bbe scored_combo_tree ??
-    typedef std::unordered_map<combo_tree, unsigned,
-                               boost::hash<combo_tree> > combo_tree_hash_counter;
+    typedef deme_t::iterator deme_it;
+    typedef deme_t::const_iterator deme_cit;
+
+    // The goal of using unordered_set here is to have O(1) access time
+    // to see if a combo tree is in the set, or not.
+    typedef boost::unordered_set<combo_tree,
+                                 boost::hash<combo_tree> > combo_tree_hash_set;
+    typedef boost::unordered_map<combo_tree, unsigned,
+                                 boost::hash<combo_tree> > combo_tree_hash_counter;
 
     // Init the metapopulation with the following set of exemplars.
     void init(const std::vector<combo_tree>& exemplars,
@@ -98,9 +121,8 @@ struct metapopulation
                    const bscore_base& bsc,
                    optimizer_base& opt,
                    const metapop_parameters& pa = metapop_parameters()) :
-        params(pa),
         _dex(type_signature, si_ca, si_kb, sc, opt, pa),
-        _bscorer(bsc),
+        _bscorer(bsc), params(pa),
         _merge_count(0),
         _best_cscore(worst_composite_score),
         _cached_dst(pa.diversity)
@@ -116,9 +138,8 @@ struct metapopulation
                    const cscore_base& sc, const bscore_base& bsc,
                    optimizer_base& opt,
                    const metapop_parameters& pa = metapop_parameters()) :
-        params(pa),
         _dex(type_signature, si, si, sc, opt, pa),
-        _bscorer(bsc),
+        _bscorer(bsc), params(pa),
         _merge_count(0),
         _best_cscore(worst_composite_score),
         _cached_dst(pa.diversity)
@@ -149,7 +170,7 @@ struct metapopulation
      * Return the set of candidates with the highest composite
      * scores.  These will all have the the same "best_composite_score".
      */
-    const scored_combo_tree_set& best_candidates() const
+    const metapop_candidates& best_candidates() const
     {
         return _best_candidates;
     }
@@ -159,7 +180,7 @@ struct metapopulation
      */
     const combo_tree& best_tree() const
     {
-        return _best_candidates.begin()->get_tree();
+        return _best_candidates.begin()->first;
     }
 
     typedef diversity_parameters::dp_t dp_t;  // diversity_penalty type
@@ -195,14 +216,14 @@ struct metapopulation
      * XXX The implementation here results in a lot of copying of
      * behavioral scores and combo trees, and thus could hurt
      * performance by quite a bit.  To avoid this, we'd need to change
-     * the use of scored_combo_tree_set in this class. This would be
+     * the use of pbscored_combo_tree_set in this class. This would be
      * a fairly big task, and it's currently not clear that its worth
      * the effort, as diversity_penalty is not yet showing promising
      * results...
      */
     void set_diversity();
 
-    void log_selected_exemplar(scored_combo_tree_ptr_set::const_iterator);
+    void log_selected_exemplar(const_iterator exemplar_it);
 
     /**
      * Select the exemplar from the population. An exemplar is choosen
@@ -220,12 +241,7 @@ struct metapopulation
      * @return the iterator of the selected exemplar, if no such
      *         exemplar exists then return end()
      */
-    scored_combo_tree_ptr_set::const_iterator select_exemplar();
-    scored_combo_tree_ptr_set::const_iterator end() const { return _scored_trees.end(); }
-    scored_combo_tree_ptr_set::const_iterator begin() const { return _scored_trees.begin(); }
-    bool empty() const { return _scored_trees.empty(); } 
-    size_t size() const { return _scored_trees.size(); }
-    void clear() { _scored_trees.clear(); }
+    pbscored_combo_tree_ptr_set::const_iterator select_exemplar();
 
     /// Given the current complexity temp, return the range of scores that
     /// are likely to be selected by the select_exemplar routine. Due to
@@ -248,10 +264,10 @@ struct metapopulation
     /// Safe to call in a multi-threaded context.
     ///
     /// @todo it would probably be more efficient to use
-    /// scored_combo_tree_ptr_set and not having to copy and
+    /// pbscored_combo_tree_ptr_set and not having to copy and
     /// reallocate candidates onces they are selected. It might be
     /// minor though in terms of performance gain.
-    void merge_candidates(scored_combo_tree_set& candidates);
+    void merge_candidates(pbscored_combo_tree_set& candidates);
 
     /**
      * merge deme -- convert instances to trees, and save them.
@@ -297,37 +313,37 @@ struct metapopulation
     // Return the set of candidates not present in the metapopulation.
     // This makes merging faster because it decreases the number of
     // calls of dominates.
-    scored_combo_tree_set get_new_candidates(const scored_combo_tree_set&);
+    pbscored_combo_tree_set get_new_candidates(const metapop_candidates& mcs);
 
-    typedef pair<scored_combo_tree_set,
-                 scored_combo_tree_set> scored_combo_tree_set_pair;
+    typedef pair<pbscored_combo_tree_set,
+                 pbscored_combo_tree_set> pbscored_combo_tree_set_pair;
 
-    typedef std::vector<const scored_combo_tree*> scored_combo_tree_ptr_vec;
-    typedef scored_combo_tree_ptr_vec::iterator scored_combo_tree_ptr_vec_it;
-    typedef scored_combo_tree_ptr_vec::const_iterator scored_combo_tree_ptr_vec_cit;
-    typedef pair<scored_combo_tree_ptr_vec,
-                 scored_combo_tree_ptr_vec> scored_combo_tree_ptr_vec_pair;
+    typedef std::vector<const pbscored_combo_tree*> pbscored_combo_tree_ptr_vec;
+    typedef pbscored_combo_tree_ptr_vec::iterator pbscored_combo_tree_ptr_vec_it;
+    typedef pbscored_combo_tree_ptr_vec::const_iterator pbscored_combo_tree_ptr_vec_cit;
+    typedef pair<pbscored_combo_tree_ptr_vec,
+                 pbscored_combo_tree_ptr_vec> pbscored_combo_tree_ptr_vec_pair;
 
     // reciprocal of random_access_view
-    static scored_combo_tree_set
-    to_set(const scored_combo_tree_ptr_vec& bcv);
+    static pbscored_combo_tree_set
+    to_set(const pbscored_combo_tree_ptr_vec& bcv);
 
-    void remove_dominated(scored_combo_tree_set& bcs, unsigned jobs = 1);
+    void remove_dominated(pbscored_combo_tree_set& bcs, unsigned jobs = 1);
 
-    static scored_combo_tree_set
-    get_nondominated_iter(const scored_combo_tree_set& bcs);
+    static pbscored_combo_tree_set
+    get_nondominated_iter(const pbscored_combo_tree_set& bcs);
 
     // split in 2 of equal size
-    static scored_combo_tree_ptr_vec_pair
-    inline split(const scored_combo_tree_ptr_vec& bcv)
+    static pbscored_combo_tree_ptr_vec_pair
+    inline split(const pbscored_combo_tree_ptr_vec& bcv)
     {
-        scored_combo_tree_ptr_vec_cit middle = bcv.begin() + bcv.size() / 2;
-        return make_pair(scored_combo_tree_ptr_vec(bcv.begin(), middle),
-                         scored_combo_tree_ptr_vec(middle, bcv.end()));
+        pbscored_combo_tree_ptr_vec_cit middle = bcv.begin() + bcv.size() / 2;
+        return make_pair(pbscored_combo_tree_ptr_vec(bcv.begin(), middle),
+                         pbscored_combo_tree_ptr_vec(middle, bcv.end()));
     }
 
-    scored_combo_tree_ptr_vec
-    get_nondominated_rec(const scored_combo_tree_ptr_vec& bcv,
+    pbscored_combo_tree_ptr_vec
+    get_nondominated_rec(const pbscored_combo_tree_ptr_vec& bcv,
                          unsigned jobs = 1);
 
     // return a pair of sets of nondominated candidates between bcs1
@@ -337,19 +353,19 @@ struct metapopulation
     // they are used in the code. The first (resp. second) element of
     // the pair corresponds to the nondominated candidates of bcs1
     // (resp. bcs2)
-    scored_combo_tree_set_pair
-    get_nondominated_disjoint(const scored_combo_tree_set& bcs1,
-                              const scored_combo_tree_set& bcs2,
+    pbscored_combo_tree_set_pair
+    get_nondominated_disjoint(const pbscored_combo_tree_set& bcs1,
+                              const pbscored_combo_tree_set& bcs2,
                               unsigned jobs = 1);
 
-    scored_combo_tree_ptr_vec_pair
-    get_nondominated_disjoint_rec(const scored_combo_tree_ptr_vec& bcv1,
-                                  const scored_combo_tree_ptr_vec& bcv2,
+    pbscored_combo_tree_ptr_vec_pair
+    get_nondominated_disjoint_rec(const pbscored_combo_tree_ptr_vec& bcv1,
+                                  const pbscored_combo_tree_ptr_vec& bcv2,
                                   unsigned jobs = 1);
 
     // merge nondominated candidate to the metapopulation assuming
     // that bcs contains no dominated candidates within itself
-    void merge_nondominated(const scored_combo_tree_set& bcs, unsigned jobs = 1);
+    void merge_nondominated(const pbscored_combo_tree_set& bcs, unsigned jobs = 1);
 
     /**
      * x dominates y if
@@ -360,30 +376,30 @@ struct metapopulation
      *                       false if y dominates x
      *                       indeterminate otherwise
      */
-    static inline boost::logic::tribool dominates(const behavioral_score& x,
+    static inline tribool dominates(const behavioral_score& x,
                                     const behavioral_score& y)
     {
         // everything dominates an empty vector
         if (x.empty()) {
             if (y.empty())
-                return boost::logic::indeterminate;
+                return indeterminate;
             return false;
         } else if (y.empty()) {
             return true;
         }
 
-        boost::logic::tribool res = boost::logic::indeterminate;
+        tribool res = indeterminate;
         for (behavioral_score::const_iterator xit = x.begin(), yit = y.begin();
              xit != x.end(); ++xit, ++yit)
         {
             if (*xit > *yit) {
                 if (!res)
-                    return boost::logic::indeterminate;
+                    return indeterminate;
                 else
                     res = true;
             } else if (*yit > *xit) {
                 if (res)
-                    return boost::logic::indeterminate;
+                    return indeterminate;
                 else
                     res = false;
             }
@@ -396,7 +412,7 @@ struct metapopulation
     
     /// Update the record of the best score seen, and the associated tree.
     /// Safe to call in a multi-threaded context.
-    void update_best_candidates(const scored_combo_tree_set& candidates);
+    void update_best_candidates(const pbscored_combo_tree_set& candidates);
 
     // log the best candidates
     void log_best_candidates() const;
@@ -420,11 +436,11 @@ struct metapopulation
     {
         if (!output_only_best) {
             for (; from != to && n != 0; ++from, n--) {
-                ostream_scored_combo_tree(out, *from, output_score,
+                ostream_pbscored_combo_tree(out, *from, output_score,
                                            output_penalty, output_bscore,
                                            output_python);
                 if (output_visited)
-                    out << "visited: " << has_been_visited(from->get_tree())
+                    out << "visited: " << has_been_visited(get_tree(*from))
                         << std::endl;
             }
             return out;
@@ -434,7 +450,7 @@ struct metapopulation
         score_t best_score = very_worst_score;
 
         for (In f = from; f != to; ++f) {
-            const scored_combo_tree& bt = *f;
+            const pbscored_combo_tree& bt = *f;
             score_t sc = get_score(bt);
             if (best_score < sc) best_score = sc;
         }
@@ -444,13 +460,13 @@ struct metapopulation
         // necessarily ranked highest, as the ranking is a linear combo
         // of both score and complexity.
         for (In f = from; f != to && n != 0; ++f, n--) {
-            const scored_combo_tree& bt = *f;
+            const pbscored_combo_tree& bt = *f;
             if (best_score <= get_score(bt)) {
-                ostream_scored_combo_tree(out, bt, output_score,
+                ostream_pbscored_combo_tree(out, bt, output_score,
                                            output_penalty, output_bscore,
                                            output_python);
                 if (output_visited)
-                    out << "visited:" << has_been_visited(from->get_tree())
+                    out << "visited:" << has_been_visited(get_tree(*from))
                         << std::endl;
             }
         }
@@ -467,7 +483,7 @@ struct metapopulation
                  bool output_only_best = false,
                  bool output_python = false)
     {
-        return ostream(out, _scored_trees.begin(), _scored_trees.end(),
+        return ostream(out, begin(), end(),
                        n, output_score, output_penalty, output_bscore,
                        output_visited, output_only_best, output_python);
     }
@@ -480,42 +496,78 @@ struct metapopulation
                bool output_visited = false,
                bool output_only_best = false);
 
+    deme_expander _dex;
+
     // Structure holding stats about diversity
-    struct diversity_stats
-    {
-        double count;    // number of pairs of candidates considered
-        double mean;     // average bscore distance between all candidates
-        double std;      // std dev bscore distance between all candidates
-        double min;      // min bscore distance between all candidates
-        double max;      // max bscore distance between all candidates
+    struct diversity_stats {
+        float count,            // number of pairs of candidates considered
+            mean,               // average bscore distance between all candidates
+            std,                // std dev bscore distance between all candidates
+            min,                // min bscore distance between all candidates
+            max;                // max bscore distance between all candidates
     };
 
     /**
      * Gather statistics about the diversity of the n best candidates
      * (if n is negative then all candidates are included)
      */
-    diversity_stats gather_diversity_stats(int n);
+    diversity_stats gather_diversity_stats(int n) {
+        if (n < 0)
+            return _cached_dst.gather_stats();
+        else {
+            using namespace boost::accumulators;
+            typedef accumulator_set<float, stats<tag::count,
+                                     tag::mean,
+                                     tag::variance,
+                                     tag::min,
+                                     tag::max>> accumulator_t;
 
-public:
-    const metapop_parameters& params;
+            // compute the statistics
+            accumulator_t acc;
+            auto from_i = cbegin(),
+                to = std::next(cbegin(), std::min(n, (int)size()));
+            for (; from_i != to; ++from_i) {
+                for (auto from_j = cbegin(); from_j != from_i; ++from_j) {
+#ifdef ENABLE_DST_CACHE
+                    cached_dst::ptr_pair cts = {&*from_j, &*from_i};
+                    auto it = _cached_dst.cache.find(cts);
+                    OC_ASSERT(it != _cached_dst.cache.cend(),
+                              "Candidate isn't in the cache that must be a bug");
+                    acc(it->second);
+#else
+                    acc(_cached_dst(&*from_j, &*from_i));
+#endif
+                }
+            }
 
-// protected:
-    deme_expander _dex;
- 
+            // gather stats
+            diversity_stats ds;
+            ds.count = boost::accumulators::count(acc);
+            ds.mean = boost::accumulators::mean(acc);
+            ds.std = sqrt(boost::accumulators::variance(acc));
+            ds.min = boost::accumulators::min(acc);
+            ds.max = boost::accumulators::max(acc);
+
+            return ds;
+        }
+    }
+
 protected:
-    scored_combo_tree_ptr_set _scored_trees;
-
     static const unsigned min_pool_size = 250;
 
     const bscore_base& _bscorer; // behavioral score
 
+public:
+    const metapop_parameters& params;
+
+protected:
     size_t _merge_count;
 
     // The best score ever found during search.
     composite_score _best_cscore;
 
     // Trees with composite score equal to _best_cscore.
-    scored_combo_tree_set _best_candidates;
+    metapop_candidates _best_candidates;
 
     // contains the exemplars of demes that have been searched so far
     // (and the number of times they have been searched)
@@ -529,7 +581,7 @@ protected:
 
     /**
      * Cache for bscore distance between (for diversity penalty). Maps
-     * a std::set<scored_combo_tree*> (only 2 elements to represent
+     * a std::set<pbscored_combo_tree*> (only 2 elements to represent
      * an unordered pair) to a a bscore distance. We don't use
      * {lru,prr}_cache because
      *
@@ -537,35 +589,95 @@ protected:
      *
      * 2) we need to remove the pairs containing deleted pointers
      */
-    struct cached_dst
-    {
+    struct cached_dst {
         // ctor
         cached_dst(const diversity_parameters& _dparams)
             : dparams(_dparams), misses(0), hits(0) {}
 
         // We use a std::set instead of a std::pair, little
         // optimization to deal with the symmetry of the distance
-        typedef std::set<const scored_combo_tree*> ptr_pair;
-        dp_t operator()(const scored_combo_tree* cl,
-                        const scored_combo_tree* cr);
+        typedef std::set<const pbscored_combo_tree*> ptr_pair;
+        dp_t operator()(const pbscored_combo_tree* cl, const pbscored_combo_tree* cr)
+        {
+#ifdef ENABLE_DST_CACHE
+            ptr_pair cts = {cl, cr};
+            // hit
+            {
+                shared_lock lock(mutex);
+                auto it = cache.find(cts);
+                if (it != cache.end()) {
+                    ++hits;
+                    return it->second;
+                }
+            }
+            // miss
+            dp_t dst = dparams.dst(get_bscore(*cl), get_bscore(*cr));
+
+            // // debug
+            // logger().fine("&cl = %p, &cr = %p, dst = %f", cl, cr, dst);
+            // // ~debug
+
+            ++misses;
+            {
+                unique_lock lock(mutex);
+                return cache[cts] = dst;
+            }
+#else
+            return dparams.dst(get_bscore(*cl), get_bscore(*cr));
+#endif
+        }
 
         /**
          * Remove all keys containing any element of ptr_seq
          */
-        void erase_ptr_seq(std::vector<scored_combo_tree*> ptr_seq);
+        void erase_ptr_seq(std::vector<pbscored_combo_tree*> ptr_seq) {
+#ifdef ENABLE_DST_CACHE
+            for (Cache::iterator it = cache.begin(); it != cache.end();) {
+                if (!is_disjoint(ptr_seq, it->first))
+                    it = cache.erase(it);
+                else
+                    ++it;
+            }
+#endif
+        }
 
         /**
          * Gather some statistics about the diversity of the
          * population, such as mean, std, min, max of the distances.
          */
-        diversity_stats gather_stats() const;
+        diversity_stats gather_stats() const {
+            using namespace boost::accumulators;
+            typedef accumulator_set<float, stats<tag::count,
+                                     tag::mean,
+                                     tag::variance,
+                                     tag::min,
+                                     tag::max>> accumulator_t;
+
+            // compute the statistics
+            accumulator_t acc;
+            for (const auto& v : cache) acc(v.second);
+
+            // gather stats
+            diversity_stats ds;
+            ds.count = boost::accumulators::count(acc);
+            ds.mean = boost::accumulators::mean(acc);
+            ds.std = sqrt(boost::accumulators::variance(acc));
+            ds.min = boost::accumulators::min(acc);
+            ds.max = boost::accumulators::max(acc);
+
+            return ds;
+        }
 
         // cache
-        boost::shared_mutex mutex;
+        typedef boost::shared_mutex cache_mutex;
+        typedef boost::shared_lock<cache_mutex> shared_lock;
+        typedef boost::unique_lock<cache_mutex> unique_lock;
+        typedef boost::unordered_map<ptr_pair, dp_t, boost::hash<ptr_pair>> Cache;
+        cache_mutex mutex;
 
         const diversity_parameters& dparams;
         std::atomic<unsigned> misses, hits;
-        std::unordered_map<ptr_pair, dp_t, boost::hash<ptr_pair>> cache;
+        Cache cache;
     };
 
     cached_dst _cached_dst;

@@ -45,8 +45,9 @@ IF (HAVE_SERVER)
     ADD_SUBDIRECTORY (spatial)
 ENDIF (HAVE_SERVER)
 
-# build unconditionally; a check is made there.
-ADD_SUBDIRECTORY (embodiment)
+IF (HAVE_EMBODIMENT)
+	ADD_SUBDIRECTORY (embodiment)
+ENDIF (HAVE_EMBODIMENT)
 
 # Graphics and visualization subsystems
 ADD_SUBDIRECTORY (visualization)

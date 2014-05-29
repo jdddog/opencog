@@ -77,7 +77,7 @@ class SCMUtilsUTest :  public CxxTest::TestSuite
 void SCMUtilsUTest::setUp(void)
 {
 	server(CogServer::createInstance);
-	evaluator = new SchemeEval(&cogserver().getAtomSpace());
+	evaluator = new SchemeEval();
 
 	// Load the required data
 	config().set("MODULES",
@@ -89,8 +89,18 @@ void SCMUtilsUTest::setUp(void)
 		"opencog/scm/utilities.scm, "
 		"tests/scm/utils-test.scm");
 
-	cogserver().loadModules();
-	cogserver().loadSCMModules();
+	// Blindly search a bunch of paths hoping to find the files
+	// in one of them ...
+	const char * paths[] =
+	{
+		"./",
+		"../",
+		"../../",
+		"../../../",
+		NULL
+	};
+	cogserver().loadModules(paths);
+	cogserver().loadSCMModules(paths);
 
 }
 

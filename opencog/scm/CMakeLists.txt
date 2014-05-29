@@ -1,5 +1,6 @@
 INSTALL (FILES
 	apply.scm
+	debug.scm
 	file-utils.scm
 	example-dbi.scm
 	persistence.scm

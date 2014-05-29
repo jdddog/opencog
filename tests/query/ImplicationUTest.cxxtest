@@ -100,7 +100,7 @@ void ImplicationUTest::setUp(void)
 	server(CogServer::createInstance);
 	as = &cogserver().getAtomSpace();
 	pm.set_atomspace(as);
-	eval = new SchemeEval(as);
+	eval = new SchemeEval();
 
 	// Load the atom types
 	config().set("MODULES",
@@ -110,8 +110,18 @@ void ImplicationUTest::setUp(void)
       "opencog/atomspace/core_types.scm, "
       "opencog/nlp/types/nlp_types.scm");
 
-	cogserver().loadModules();
-	load_scm_files_from_config(*as);
+	// Blindly search a bunch of paths hoping to find the files
+	// in one of them ...
+	const char * paths[] = 
+	{
+		"./",
+		"../",
+		"../../",
+		"../../../",
+		NULL
+	};
+	cogserver().loadModules(paths);
+	load_scm_files_from_config(*as, paths);
 
 	// Create initialzation
 	const char * setup = 

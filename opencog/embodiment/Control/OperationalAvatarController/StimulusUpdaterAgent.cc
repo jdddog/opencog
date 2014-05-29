@@ -41,7 +41,7 @@ bool StimulusUpdaterAgent::Stimulus::runUpdater (AtomSpace & atomSpace)
 #if HAVE_GUILE
 
     // Initialize scheme evaluator
-    SchemeEval* evaluator = new SchemeEval(&atomSpace);
+    SchemeEval* evaluator = new SchemeEval();
     std::string scheme_expression, scheme_return_value;
 
     scheme_expression = "( " + stimulusUpdater + " )";

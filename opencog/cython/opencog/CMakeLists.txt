@@ -1,7 +1,7 @@
 
 # Need to use -fno-strict-aliasing when compiling cython code, in order
 # to avoid nasty compiler warnings about aliasing.  Cython explicitly
-# performs aliasing, in order to emulate python object inheritance.
+# performs aliasing, in order to emulate python object  inheritance.
 # See, for example, 
 # https://groups.google.com/forum/#!topic/cython-users/JV1-KvIUeIg
 #
@@ -39,8 +39,7 @@ ENDMACRO(CYTHON_ADD_MODULE_PYX)
 IF (HAVE_ATOMSPACE)
 	###################### logger ##########################################
 	CYTHON_ADD_MODULE_PYX(logger)
-	list(APPEND ADDITIONAL_MAKE_CLEAN_FILES "logger.cpp" 
-		"../../util/Logger.h")
+	list(APPEND ADDITIONAL_MAKE_CLEAN_FILES "logger.cpp")
 
 	ADD_LIBRARY(logger_cython SHARED
 		logger.cpp
@@ -58,12 +57,7 @@ IF (HAVE_ATOMSPACE)
 	###################### atomspace ####################################
 	CYTHON_ADD_MODULE_PYX(atomspace
 		"atom.pyx" "classserver.pyx" "atomspace_details.pyx"
-		"spacetime.pyx" opencog_atom_types
-		"../../atomspace/TruthValue.h" "../../atomspace/SimpleTruthValue.h"
-		"../../atomspace/ClassServer.h" "../../atomspace/Handle.h"
-		"../../atomspace/AtomSpace.h"
-		"../../spacetime/SpaceServer.h" "../../spacetime/TimeServer.h"
-	)
+		"spacetime.pyx" opencog_atom_types)
 
 	# list(APPEND ADDITIONAL_MAKE_CLEAN_FILES "atomspace.cpp")
 	list(APPEND ADDITIONAL_MAKE_CLEAN_FILES "atomspace_api.h")
@@ -73,8 +67,6 @@ IF (HAVE_ATOMSPACE)
 		atomspace.cpp
 	)
 
-	# XXX FIXME Cython should not static link the atom-types, but
-	# but should instead dynamic-load them, as needed.
 	ADD_DEPENDENCIES(atomspace_cython opencog_atom_types)
 	ADD_DEPENDENCIES(atomspace_cython nlp_atom_types)
 	ADD_DEPENDENCIES(atomspace_cython attention_atom_types)
@@ -103,8 +95,7 @@ ENDIF (HAVE_ATOMSPACE)
 IF (HAVE_ATOMSPACE AND HAVE_GUILE)
 	############################## scheme wrapper #####################
 	CYTHON_ADD_MODULE_PYX(scheme_wrapper
-		"PyScheme.h" "atomspace.pxd" opencog_atom_types
-		"../../guile/load-file.h" "../../query/PatternSCM.h")
+		"PyScheme.cc" "atomspace.pxd" opencog_atom_types)
 
 	list(APPEND ADDITIONAL_MAKE_CLEAN_FILES "scheme_wrapper.cpp")
 
@@ -129,13 +120,7 @@ ENDIF (HAVE_ATOMSPACE AND HAVE_GUILE)
 IF (HAVE_SERVER)
 	############################ cogserver #########################
 	CYTHON_ADD_MODULE_PYX(cogserver
-		"request.pyx" "agent.pyx" "atomspace.pxd" opencog_atom_types
-		"agent_finder_types.h"
-		"../../atomspace/TruthValue.h" "../../atomspace/SimpleTruthValue.h"
-		"../../atomspace/ClassServer.h" "../../atomspace/Handle.h"
-		"../../atomspace/AtomSpace.h"
-		"../../spacetime/SpaceServer.h" "../../spacetime/TimeServer.h"
-	)
+		"request.pyx" "agent.pyx" "atomspace.pxd" opencog_atom_types)
 
 	list(APPEND ADDITIONAL_MAKE_CLEAN_FILES "cogserver.cpp")
 
@@ -155,13 +140,7 @@ IF (HAVE_SERVER)
 
 	####################### agent finder ########################
 	CYTHON_ADD_MODULE_PYX(agent_finder
-		"atomspace.pxd" "cogserver.pxd"
-		"../../server/Agent.h" "../../server/Request.h"
-		"../../atomspace/TruthValue.h" "../../atomspace/SimpleTruthValue.h"
-		"../../atomspace/ClassServer.h" "../../atomspace/Handle.h"
-		"../../atomspace/AtomSpace.h"
-		"../../spacetime/SpaceServer.h" "../../spacetime/TimeServer.h"
-	)
+		"atomspace.pxd" "cogserver.pxd")
 
 	list(APPEND ADDITIONAL_MAKE_CLEAN_FILES
 		"agent_finder.cpp" "agent_finder_api.h")
@@ -186,9 +165,7 @@ IF (HAVE_SERVER)
 ENDIF(HAVE_SERVER)
 
 IF (HAVE_MOSES)
-	CYTHON_ADD_MODULE_PYX(pymoses
-		"../../learning/moses/main/moses_exec.h"
-	)
+	CYTHON_ADD_MODULE_PYX(pymoses)
 
 	# opencog.pymoses Python bindings
 	ADD_LIBRARY(moses_cython SHARED
@@ -230,6 +207,6 @@ ELSE (WIN32)
 ENDIF (WIN32)
 
 INSTALL (FILES 
-	__init__.py
+	opencog/__init__.py
 	DESTINATION "${DATADIR}/python/opencog")
 

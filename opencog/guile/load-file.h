@@ -30,17 +30,14 @@ namespace opencog {
  *  @{
  */
 
-
 #ifdef HAVE_GUILE
 int load_scm_file (AtomSpace& as, const char * filename);
-int load_scm_file_relative (AtomSpace& as, const char * filename, const char * paths[] = NULL);
-void load_scm_files_from_config (AtomSpace& as, const char * paths[] = NULL);
+void load_scm_files_from_config (AtomSpace& as, const char * paths[]);
 #else 
 // If there is no guile, then load_scm_file() must always return 
 // an error (i.e. a non-zero return value).
-static inline int load_scm_file (AtomSpace& as, const char *) { return 2; }
-static int load_scm_file_relative (AtomSpace& as, const char *, const char ** = NULL) { return 2; }
-static inline void load_scm_files_from_config (AtomSpace& as, const char ** = NULL) { }
+static inline int load_scm_file (AtomSpace& as, const char *) { return 1; }
+static inline void load_scm_files_from_config (AtomSpace& as, const char **) { }
 #endif /* HAVE_GUILE */
 
 /** @}*/

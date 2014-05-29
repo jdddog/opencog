@@ -54,7 +54,7 @@ bool expand_deme(metapopulation& mp,
     // over exemplars until we find one that expands.
     // XXX When would one never expand?  Wouldn't that be a bug?
     while (1) {
-        scored_combo_tree_ptr_set_cit exemplar = mp.select_exemplar();
+        pbscored_combo_tree_ptr_set_cit exemplar = mp.select_exemplar();
 
         // Should have found something by now.
         if (exemplar == mp.end()) {
@@ -67,10 +67,10 @@ bool expand_deme(metapopulation& mp,
         }
 
         // if create_deme returned true, we are good to go.
-        if (mp._dex.create_demes(exemplar->get_tree(), stats.n_expansions))
+        if (mp._dex.create_demes(get_tree(*exemplar), stats.n_expansions))
             break;
 
-        logger().error() << "Exemplar: " << exemplar->get_tree();
+        logger().error() << "Exemplar: " << get_tree(*exemplar);
         OC_ASSERT(false, "Exemplar failed to expand!\n");
     }
 
@@ -140,7 +140,7 @@ void local_moses(metapopulation& mp,
         // (columns of tab-seprated numbers)
         if (logger().isInfoEnabled()) {
 
-            std::stringstream ss;
+            stringstream ss;
             ss << "Stats: " << stats.n_expansions
                << "\t" << stats.n_evals    // number of evaluations so far
                << "\t" << ((int) stats.elapsed_secs)  // wall-clock time.
@@ -176,7 +176,7 @@ void local_moses(metapopulation& mp,
         // I find this particularly useful for studying diversity but
         // it could be relaxed and printed whatever
         if (logger().isDebugEnabled() and mp.params.diversity.pressure > 0.0) {
-            std::stringstream ss;
+            stringstream ss;
             ss << pa.max_cnd_output << " best candidates of the metapopulation (with scores and visited status):" << std::endl;
             mp.ostream(ss, pa.max_cnd_output, true, true, true, true);
             logger().debug(ss.str());

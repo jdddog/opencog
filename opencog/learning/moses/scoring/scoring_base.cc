@@ -1,5 +1,5 @@
 /*
- * opencog/learning/moses/scoring/scoring_base.cc
+ * opencog/learning/moses/moses/scoring_base.cc
  *
  * Copyright (C) 2002-2008 Novamente LLC
  * Copyright (C) 2012,2013 Poulin Holdings LLC
@@ -95,7 +95,7 @@ score_t multibscore_based_bscore::min_improv() const
     // boost::min_element(_bscorers | boost::transformed(/*)
     score_t res = very_best_score;
     for (const bscore_base& bs : _bscorers)
-        res = std::min(res, bs.min_improv());
+        res = min(res, bs.min_improv());
     return res;
 }
 

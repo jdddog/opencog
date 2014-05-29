@@ -1,11 +1,10 @@
 from math import fabs, sqrt
 from numpy import convolve, NINF as NEGATIVE_INFINITY, PINF as POSITIVE_INFINITY
-import numpy
 from scipy.stats.distributions import uniform_gen
 from spatiotemporal.temporal_events.util import calculate_bounds_of_probability_distribution
 from spatiotemporal.temporal_interval_handling import calculateCenterMass
 from spatiotemporal.time_intervals import TimeInterval
-from utility.functions import FunctionPiecewiseLinear, FunctionHorizontalLinear, integral, FUNCTION_ZERO, almost_equals
+from utility.geometric import FunctionPiecewiseLinear, FunctionHorizontalLinear, integral, FUNCTION_ZERO, almost_equals
 from utility.numeric import EPSILON
 
 
@@ -30,41 +29,15 @@ TEMPORAL_RELATIONS = {
 
 class TemporalRelation(dict):
     all_relations = 'pmoFDseSdfOMP'
-    _type = None
-    _list = None
-    _vector = None
-
-    @staticmethod
-    def from_list(list_object):
-        relation = TemporalRelation()
-        for i, name in enumerate(TemporalRelation.all_relations):
-            value = list_object[i]
-            if not isinstance(value, (int, float)):
-                value = float(value)
-            relation[name] = value
-        return relation
 
     def to_list(self):
-        if self._list is None:
-            self._list = []
-            for name in self.all_relations:
-                self._list.append(self[name])
-        return self._list
-
-    def to_vector(self):
-        if self._vector is None:
-            _list = self.to_list()
-            self._vector = numpy.array(_list)
-        return self._vector
-
-    @property
-    def type(self):
-        if self._type is None:
-            self._type = ''.join([name for name in TemporalRelation.all_relations if self[name] > 0])
-        return self._type
+        result = []
+        for name in self.all_relations:
+            result.append(self[name])
+        return result
 
     def __repr__(self):
-        return 'TemporalRelation({0})'.format(self.type)
+        return 'TemporalRelation({0})'.format(''.join([name for name in self.all_relations if self[name] > 0]))
 
     def __str__(self):
         return repr(self)
@@ -79,8 +52,8 @@ class BaseRelationFormula(object):
         return fabs(a - b)
 
     def bounds_of(self, dist):
-        # if dist in self.bounds:
-        #     return self.bounds[dist]
+        if dist in self.bounds:
+            return self.bounds[dist]
 
         bounds = calculate_bounds_of_probability_distribution(dist)
         self.bounds[dist] = bounds
@@ -128,84 +101,143 @@ class BaseRelationFormula(object):
 
 class FormulaCreator(object):
     def __init__(self, relation_formula):
+        if not isinstance(relation_formula, BaseRelationFormula):
+            raise TypeError("'relation_formula' should be an instance of BaseTemporalFormula")
         self.relation_formula = relation_formula
 
     def temporal_relations_between(self, temporal_event_1, temporal_event_2):
-        dist_1_beginning, dist_1_ending = temporal_event_1.distribution_beginning, temporal_event_1.distribution_ending
-        dist_2_beginning, dist_2_ending = temporal_event_2.distribution_beginning, temporal_event_2.distribution_ending
-        self.relation_formula.bounds[dist_1_beginning] = temporal_event_1.a, temporal_event_1.beginning
-        self.relation_formula.bounds[dist_1_ending] = temporal_event_1.ending, temporal_event_1.b
-        self.relation_formula.bounds[dist_2_beginning] = temporal_event_2.a, temporal_event_2.beginning
-        self.relation_formula.bounds[dist_2_ending] = temporal_event_2.ending, temporal_event_2.b
-
-        combinations = [
-            (dist_1_beginning, dist_2_beginning),
-            (dist_1_beginning, dist_2_ending),
-            (dist_1_ending, dist_2_beginning),
-            (dist_1_ending, dist_2_ending)
-        ]
-
-        return self.calculate_relations(combinations)
-
-    def calculate_relations(self, combinations=None):
-        if combinations is None:
-            combinations = self.relation_formula.combinations
-
-        dist_1_beginning, dist_2_beginning = combinations[0]
-        dist_1_ending, dist_2_ending = combinations[3]
+        beginning_a, ending_a = temporal_event_1.distribution_beginning, temporal_event_1.distribution_ending
+        beginning_b, ending_b = temporal_event_2.distribution_beginning, temporal_event_2.distribution_ending
+        self.relation_formula.bounds[beginning_a] = temporal_event_1.a, temporal_event_1.beginning
+        self.relation_formula.bounds[ending_a] = temporal_event_1.ending, temporal_event_1.b
+        self.relation_formula.bounds[beginning_b] = temporal_event_2.a, temporal_event_2.beginning
+        self.relation_formula.bounds[ending_b] = temporal_event_2.ending, temporal_event_2.b
 
         before = {}
         same = {}
         after = {}
+
+        combinations = [
+            (beginning_a, beginning_b),
+            (beginning_a, ending_b),
+            (ending_a, beginning_b),
+            (ending_a, ending_b)
+        ]
+
         for key in combinations:
             before[key], same[key], after[key] = self.relation_formula.compare(*key)
 
         result = TemporalRelation()
 
-        result['p'] = before[dist_1_beginning, dist_2_beginning] * before[dist_1_beginning, dist_2_ending] * \
-                      before[dist_1_ending, dist_2_beginning] * before[dist_1_ending, dist_2_ending]
+        result['p'] = min(before[beginning_a, beginning_b] , before[beginning_a, ending_b] ,
+                      before[ending_a, beginning_b] , before[ending_a, ending_b])
 
-        result['m'] = before[dist_1_beginning, dist_2_beginning] * before[dist_1_beginning, dist_2_ending] * \
-                      same[dist_1_ending, dist_2_beginning] * before[dist_1_ending, dist_2_ending]
+        result['m'] = min(before[beginning_a, beginning_b] , before[beginning_a, ending_b] ,
+                      same[ending_a, beginning_b] , before[ending_a, ending_b])
 
-        result['o'] = before[dist_1_beginning, dist_2_beginning] * before[dist_1_beginning, dist_2_ending] * \
-                      after[dist_1_ending, dist_2_beginning] * before[dist_1_ending, dist_2_ending]
+        result['o'] = min(before[beginning_a, beginning_b] , before[beginning_a, ending_b] ,
+                      after[ending_a, beginning_b] , before[ending_a, ending_b])
 
-        result['F'] = before[dist_1_beginning, dist_2_beginning] * before[dist_1_beginning, dist_2_ending] * \
-                      after[dist_1_ending, dist_2_beginning] * same[dist_1_ending, dist_2_ending]
+        result['F'] = min(before[beginning_a, beginning_b] , before[beginning_a, ending_b] ,
+                      after[ending_a, beginning_b] , same[ending_a, ending_b])
 
-        result['D'] = before[dist_1_beginning, dist_2_beginning] * before[dist_1_beginning, dist_2_ending] * \
-                      after[dist_1_ending, dist_2_beginning] * after[dist_1_ending, dist_2_ending]
+        result['D'] = min(before[beginning_a, beginning_b] , before[beginning_a, ending_b] ,
+                      after[ending_a, beginning_b] , after[ending_a, ending_b])
 
-        result['s'] = same[dist_1_beginning, dist_2_beginning] * before[dist_1_beginning, dist_2_ending] * \
-                      after[dist_1_ending, dist_2_beginning] * before[dist_1_ending, dist_2_ending]
+        result['s'] = min(same[beginning_a, beginning_b] , before[beginning_a, ending_b] ,
+                      after[ending_a, beginning_b] , before[ending_a, ending_b])
 
-        result['e'] = same[dist_1_beginning, dist_2_beginning] * before[dist_1_beginning, dist_2_ending] * \
-                      after[dist_1_ending, dist_2_beginning] * same[dist_1_ending, dist_2_ending]
+        result['e'] = min(same[beginning_a, beginning_b] , before[beginning_a, ending_b] ,
+                      after[ending_a, beginning_b] , same[ending_a, ending_b])
 
-        result['S'] = same[dist_1_beginning, dist_2_beginning] * before[dist_1_beginning, dist_2_ending] * \
-                      after[dist_1_ending, dist_2_beginning] * after[dist_1_ending, dist_2_ending]
+        result['S'] = min(same[beginning_a, beginning_b] , before[beginning_a, ending_b] ,
+                      after[ending_a, beginning_b] , after[ending_a, ending_b])
 
-        result['d'] = after[dist_1_beginning, dist_2_beginning] * before[dist_1_beginning, dist_2_ending] * \
-                      after[dist_1_ending, dist_2_beginning] * before[dist_1_ending, dist_2_ending]
+        result['d'] = min(after[beginning_a, beginning_b] , before[beginning_a, ending_b] ,
+                      after[ending_a, beginning_b] , before[ending_a, ending_b])
 
-        result['f'] = after[dist_1_beginning, dist_2_beginning] * before[dist_1_beginning, dist_2_ending] * \
-                      after[dist_1_ending, dist_2_beginning] * same[dist_1_ending, dist_2_ending]
+        result['f'] = min(after[beginning_a, beginning_b] , before[beginning_a, ending_b] ,
+                      after[ending_a, beginning_b] , same[ending_a, ending_b])
 
-        result['O'] = after[dist_1_beginning, dist_2_beginning] * before[dist_1_beginning, dist_2_ending] * \
-                      after[dist_1_ending, dist_2_beginning] * after[dist_1_ending, dist_2_ending]
+        result['O'] = min(after[beginning_a, beginning_b] , before[beginning_a, ending_b] ,
+                      after[ending_a, beginning_b] , after[ending_a, ending_b])
 
-        result['M'] = after[dist_1_beginning, dist_2_beginning] * same[dist_1_beginning, dist_2_ending] * \
-                      after[dist_1_ending, dist_2_beginning] * after[dist_1_ending, dist_2_ending]
+        result['M'] = min(after[beginning_a, beginning_b] , same[beginning_a, ending_b] ,
+                      after[ending_a, beginning_b] , after[ending_a, ending_b])
 
-        result['P'] = after[dist_1_beginning, dist_2_beginning] * after[dist_1_beginning, dist_2_ending] * \
-                      after[dist_1_ending, dist_2_beginning] * after[dist_1_ending, dist_2_ending]
+        result['P'] = min(after[beginning_a, beginning_b] , after[beginning_a, ending_b] ,
+                      after[ending_a, beginning_b] , after[ending_a, ending_b])
+
+
 
         return result
 
 
+class RelationFormulaGM(BaseRelationFormula):
+    def before_point(self, point_1_value, point_2_value):
+        return point_1_value ** 2
+
+    def same_point(self, point_1_value, point_2_value):
+        return sqrt(point_1_value * point_2_value)
+
+    def before(self, dist_1, dist_2):
+        return integral(lambda x: self.before_point(dist_1.pdf(x), 0) - self.same_point(dist_1.pdf(x), dist_2.pdf(x)),
+                        *self.before_integral_bounds(dist_1, dist_2))
+
+    def after(self, dist_1, dist_2):
+        return self.before(dist_2, dist_1)
+
+
+class RelationFormulaSimple(BaseRelationFormula):
+    def before(self, dist_1, dist_2):
+        a, b = self.bounds_of(dist_1)
+        # Cancel pdf's error
+        a += EPSILON
+        b -= EPSILON
+        interval = TimeInterval(a, b)
+        dictionary_input_output = {}
+        for time_step in interval:
+            dictionary_input_output[time_step] = dist_1.pdf(time_step) * (1 - dist_2.cdf(time_step))
+        function = FunctionPiecewiseLinear(dictionary_input_output, FUNCTION_ZERO)
+        return integral(function, a, b)
+
+    def after(self, dist_1, dist_2):
+        return self.before(dist_2, dist_1)
+
+    # def before(self, dist_1, dist_2):
+    #     dist_1_a, dist_1_b = self.bounds_of(dist_1)
+    #     dist_2_a, dist_2_b = self.bounds_of(dist_2)
+    #     a, b = dist_1_a, dist_2_a
+    #     interval = TimeInterval(a, b, 200)
+    #     dictionary_input_output = {}
+    #     for time_step in interval:
+    #         dictionary_input_output[time_step] = dist_1.pdf(time_step) ** 2
+    #     function = FunctionPiecewiseLinear(dictionary_input_output, FUNCTION_ZERO)
+    #     return integral(function, a, b)
+
+    def same(self, dist_1, dist_2):
+        dist_1_a, dist_1_b = self.bounds_of(dist_1)
+        dist_2_a, dist_2_b = self.bounds_of(dist_2)
+        a, b = max(dist_1_a, dist_2_a), min(dist_1_b, dist_2_b)
+        interval = TimeInterval(a, b)
+        dictionary_input_output = {}
+        for time_step in interval:
+            dictionary_input_output[time_step] = dist_1.pdf(time_step) * dist_2.pdf(time_step)
+        function = FunctionPiecewiseLinear(dictionary_input_output, FUNCTION_ZERO)
+        return integral(function, a, b)
+
+    # def compare(self, dist_1, dist_2):
+    #     same = self.same(dist_1, dist_2)
+    #     non_same = 1 - same
+    #     before = self.before(dist_1, dist_2)
+    #     after = self.before(dist_2, dist_1)
+    #     before = before / (before + after) * non_same
+    #     after = after / (before + after) * non_same
+    #     return before, same, after
+
+
 class RelationFormulaConvolution(BaseRelationFormula):
-    def function_convolution_uniform(self, bounds_1, bounds_2, probability=None):
+    def function_convolution_uniform(self, bounds_1, bounds_2):
         a1, b1 = bounds_1
         a2, b2 = bounds_2
         length_1 = fabs(a1 - b1)
@@ -217,14 +249,11 @@ class RelationFormulaConvolution(BaseRelationFormula):
         trapezium_2, trapezium_3 = trapezium_1 + fabs(length_1 - length_2), convolution_bounds_b
         #assert trapezium_2 + min(length_2, length_1) == trapezium_3
 
-        if probability is None:
-            probability = min(1 / length_1, 1 / length_2)
+        p = min(1 / length_1, 1 / length_2)
 
-        result = FunctionPiecewiseLinear(
-            {trapezium_0: 0, trapezium_1: probability, trapezium_2: probability, trapezium_3: 0},
-            FUNCTION_ZERO)
+        result = FunctionPiecewiseLinear({trapezium_0: 0, trapezium_1: p, trapezium_2: p, trapezium_3: 0},
+                                         FUNCTION_ZERO)
         result.is_normalised = True
-
         return result
 
     def function_convolution(self, dist_1, dist_2, bins=50):
@@ -262,27 +291,15 @@ class RelationFormulaConvolution(BaseRelationFormula):
         convolution_function = FunctionPiecewiseLinear(dictionary_convolution_biased, FunctionHorizontalLinear(0))
         return convolution_function.normalised()
 
-    def calculate_similarity(self, dist_1, dist_2):
-        if (type(dist_1.dist), type(dist_2.dist)) == (uniform_gen, uniform_gen):
-            length_dist_1 = self.duration_of(dist_1)
-            length_dist_2 = self.duration_of(dist_2)
-            return min(length_dist_1, length_dist_2) / sqrt(length_dist_1 * length_dist_2)
-
-        dist_1_mean, dist_2_mean = dist_1.mean(), dist_2.mean()
-
-        dist_1_transformed = lambda t: dist_1.pdf(t + dist_1_mean)
-        dist_2_transformed = lambda t: dist_2.pdf(t + dist_2_mean)
-
-        geometric_mean = lambda t: sqrt(dist_1_transformed(t) * dist_2_transformed(t))
-        return integral(geometric_mean, NEGATIVE_INFINITY, POSITIVE_INFINITY)
-
     def compare(self, dist_1, dist_2):
         convolution = self.function_convolution(dist_1, dist_2)
-        before = integral(convolution, NEGATIVE_INFINITY, 0)
-        after = integral(convolution, 0, POSITIVE_INFINITY)
-        similarity = self.calculate_similarity(dist_1, dist_2)
-        correlation = 1 - fabs(before - after)
-        same = similarity * correlation
+        a_1, b_1 = self.bounds[dist_1]
+        a_2, b_2 = self.bounds[dist_2]
+        same_bound = fabs(max(a_1, a_2) - min(b_1, b_2))
+        same_bound = 0
+        before = sqrt(integral(convolution, NEGATIVE_INFINITY, -same_bound))
+        same = integral(convolution, -same_bound, same_bound)
+        after = sqrt(integral(convolution, same_bound, POSITIVE_INFINITY))
 
         return before, same, after
 
@@ -327,6 +344,9 @@ class RelationFormulaGeometricMean(BaseRelationFormula):
             geometric_mean_scaled = FunctionPiecewiseLinear(dictionary_input_output, function_undefined=FUNCTION_ZERO)
             portion_after = integral(geometric_mean_scaled, NEGATIVE_INFINITY, delta)
             portion_before = integral(geometric_mean_scaled, delta, POSITIVE_INFINITY)
+
+        if (portion_after + portion_before) == 0:
+            pass
 
         after = portion_after / (portion_after + portion_before) * non_same_portion
         return 1.0 - same - after, same, after

@@ -68,9 +68,9 @@ build_knobs::build_knobs(combo_tree& exemplar,
     if ((perceptions != NULL || actions != NULL) &&
         (output_type != id::action_result_type))
     {
-        std::stringstream ss;
+        stringstream ss;
         ss << output_type;
-        std::stringstream art_ss;
+        stringstream art_ss;
         art_ss << id::action_result_type;
         OC_ASSERT(0, "ERROR: During representation building, "
                      "expected action type '%s', got '%s'",
@@ -120,7 +120,7 @@ build_knobs::build_knobs(combo_tree& exemplar,
     }
     else
     {
-        std::stringstream ss;
+        stringstream ss;
         ss << output_type;
         OC_ASSERT(0, "Unsupported output type, got '%s'",
                   ss.str().c_str());
@@ -219,7 +219,7 @@ void build_knobs::logical_canonize(pre_it it)
  * @return a ptr_vector of the knobs
  */
 template<typename It>
-boost::ptr_vector<logical_subtree_knob>
+ptr_vector<logical_subtree_knob>
 build_knobs::logical_probe_rec(pre_it subtree,
                                combo_tree& exemplr, pre_it it,
                                It from, It to,
@@ -236,11 +236,11 @@ build_knobs::logical_probe_rec(pre_it subtree,
         // has to be put before the asyncronous call to avoid
         // read/write conflicts)
         combo_tree exemplr_cp(exemplr);
-        pre_it it_cp = next(exemplr_cp.begin(), std::distance(exemplr.begin(), it));
-        pre_it subtree_cp = next(exemplr_cp.begin(), std::distance(exemplr.begin(), subtree));
+        pre_it it_cp = next(exemplr_cp.begin(), distance(exemplr.begin(), it));
+        pre_it subtree_cp = next(exemplr_cp.begin(), distance(exemplr.begin(), subtree));
 
         // asynchronous recursive call for [from, mid)
-        std::future<boost::ptr_vector<logical_subtree_knob>> f_async =
+        std::future<ptr_vector<logical_subtree_knob>> f_async =
             async(std::launch::async,
                   [&]() {return this->logical_probe_rec(subtree, exemplr, it,
                                                         from, mid,
@@ -248,7 +248,7 @@ build_knobs::logical_probe_rec(pre_it subtree,
                                                         s_jobs.first);});
 
         // synchronous recursive call for [mid, to) on the copy
-        boost::ptr_vector<logical_subtree_knob> kb_copy_v =
+        ptr_vector<logical_subtree_knob> kb_copy_v =
             logical_probe_rec(subtree_cp, exemplr_cp, it_cp, mid, to,
                               add_if_in_exemplar, s_jobs.second);
 
@@ -259,7 +259,7 @@ build_knobs::logical_probe_rec(pre_it subtree,
         }
         return kb_v;
     } else {
-        boost::ptr_vector<logical_subtree_knob> kb_v;
+        ptr_vector<logical_subtree_knob> kb_v;
         while (from != to) {
             auto kb = new logical_subtree_knob(exemplr, it, from->begin());
             if ((add_if_in_exemplar || !kb->in_exemplar())
@@ -594,7 +594,7 @@ void build_knobs::add_logical_knobs(pre_it subtree,
     // The actual running time for logical_probe_rec seems to take
     // 1.5 to 5 millisecs per subtree node, when disc_probe_rec is
     // enabled.
-    boost::ptr_vector<logical_subtree_knob> kb_v =
+    ptr_vector<logical_subtree_knob> kb_v =
         logical_probe_rec(subtree, _exemplar, it, perms.begin(), perms.end(),
                           add_if_in_exemplar, nthr);
 
@@ -927,7 +927,7 @@ void build_knobs::rec_canonize(pre_it it)
         logical_canonize(it.begin());
     }
     else {
-        std::stringstream ss;
+        stringstream ss;
         ss << *it << " not a buitin, neither an argument";
         OC_ASSERT(is_argument(*it), ss.str());
     }
@@ -1278,7 +1278,6 @@ static void enumerate_nodes(sib_it it, vector<ann_type>& nodes)
 // and can't possibly work ... 
 void build_knobs::ann_canonize(pre_it it)
 {
-    using namespace std;
     combo::tree_transform trans;
     cout << _exemplar << endl << endl;
     ann net = trans.decodify_tree(_exemplar);

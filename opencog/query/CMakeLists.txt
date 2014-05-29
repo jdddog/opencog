@@ -11,11 +11,7 @@ ADD_DEPENDENCIES(query
 	opencog_atom_types
 )
 
-TARGET_LINK_LIBRARIES(query 
-        atomspace 
-        execution 
-        smob
-)
+TARGET_LINK_LIBRARIES(query atomspace execution)
 
 # Build the query cogserver module
 ADD_LIBRARY(QueryModule SHARED

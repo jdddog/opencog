@@ -43,7 +43,7 @@
 namespace opencog {
 namespace moses {
 
-namespace ba = boost::accumulators;
+using namespace boost::accumulators;
 
 feature_selector::feature_selector(const combo::CTable& ctable,
                                    const feature_selector_parameters& festor_params)
@@ -66,7 +66,7 @@ void feature_selector::preprocess_params(const combo::combo_tree& xmplr)
     const auto& ilabels = _ctable.get_input_labels();
 
     // names of the exemplar features
-    std::vector<std::string> xmplr_feature_names;
+    vector<string> xmplr_feature_names;
     for (arity_t i : xmplr_features)
         xmplr_feature_names.push_back(ilabels[i]);
 
@@ -97,7 +97,7 @@ void feature_selector::preprocess_params(const combo::combo_tree& xmplr)
     // Alternatively to params.increase_target_size, one can ignore
     // the features in the exemplar during feature selection.
     params.ignored_features = params.ignore_xmplr_features ?
-        xmplr_features : std::set<arity_t>();
+        xmplr_features : set<arity_t>();
 
     // Or one can use the output of the exemplar as an initial feature
     if (params.xmplr_as_feature) {
@@ -162,7 +162,7 @@ CTable feature_selector::build_fs_ctable(const combo_tree& xmplr) const
             // we use most_frequent() to determine wrongness, but this
             // could be relaxed.
             //
-            const Counter<vertex, count_t> cnt = vct.second;
+            Counter<vertex, count_t> cnt = vct.second;
             vertex actual_out = cnt.most_frequent();
             consider_row = predicted_out != actual_out;
         }
@@ -198,7 +198,7 @@ CTable feature_selector::build_fs_ctable(const combo_tree& xmplr) const
 
     if (logger().isFineEnabled()) {
         logger().fine("fs_ctable:");
-        std::stringstream ss;
+        stringstream ss;
         ostreamCTable(ss, fs_ctable);
         logger().fine() << ss.str();
     }
@@ -232,12 +232,11 @@ void feature_selector::log_stats_top_feature_sets(const feature_set_pop& top_fs)
 
     // Accumulator to gather statistics about mutual information
     // between feature set candidates
-    typedef ba::accumulator_set<double,
-                                ba::stats<ba::tag::count,
-                                          ba::tag::mean,
-                                          ba::tag::variance,
-                                          ba::tag::min,
-                                          ba::tag::max> > accumulator_t;
+    typedef accumulator_set<float, stats<tag::count,
+                                         tag::mean,
+                                         tag::variance,
+                                         tag::min,
+                                         tag::max>> accumulator_t;
     accumulator_t diversity_acc, score_acc;
 
     // Stats about score and diversity
@@ -248,18 +247,19 @@ void feature_selector::log_stats_top_feature_sets(const feature_set_pop& top_fs)
     }
 
     logger().info() << "Feature sets score stats (accounting for diversity) = "
-                    << "(count: " << ba::count(score_acc)
-                    << ", mean: " << ba::mean(score_acc)
-                    << ", std dev: " << sqrt(ba::variance(score_acc))
-                    << ", min: " << ba::min(score_acc)
-                    << ", max: " << ba::max(score_acc) << ")";
+                    << "(count: " << count(score_acc)
+                    << ", mean: " << mean(score_acc)
+                    << ", std dev: " << sqrt(variance(score_acc))
+                    << ", min: " << boost::accumulators::min(score_acc)
+                    << ", max: " << boost::accumulators::max(score_acc) << ")";
 
     logger().info() << "feature sets diversity stats (MI) = "
-                    << "(count: " << ba::count(diversity_acc)
-                    << ", mean: " << ba::mean(diversity_acc)
-                    << ", std dev: " << sqrt(ba::variance(diversity_acc))
-                    << ", min: " << ba::min(diversity_acc)
-                    << ", max: " << ba::max(diversity_acc) << ")";
+                    << "(count: " << count(diversity_acc)
+                    << ", mean: " << mean(diversity_acc)
+                    << ", std dev: " << sqrt(variance(diversity_acc))
+                    << ", min: " << boost::accumulators::min(diversity_acc)
+                    << ", max: " << boost::accumulators::max(diversity_acc) << ")";
+
 }
 
 void feature_selector::remove_useless_features(feature_set_pop& sf_pop) const

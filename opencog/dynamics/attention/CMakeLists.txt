@@ -38,6 +38,7 @@ ADD_LIBRARY(attention SHARED
 	ImportanceSpreadingAgent
 	ImportanceDiffusionAgent
 	ImportanceUpdatingAgent
+	STIDecayingAgent
 )
 
 TARGET_LINK_LIBRARIES(attention server)
@@ -83,5 +84,6 @@ INSTALL (FILES
 	ImportanceSpreadingAgent.h
 	ImportanceDiffusionAgent.h
 	ImportanceUpdatingAgent.h
+	STIDecayingAgent.h
 	DESTINATION "include/${PROJECT_NAME}/dynamics/attention"
 )

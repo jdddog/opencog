@@ -42,6 +42,7 @@ AttentionModule::AttentionModule(CogServer& cs) :
 #endif
     _cogserver.registerAgent(ImportanceSpreadingAgent::info().id, &spreadingFactory);
     _cogserver.registerAgent(ImportanceUpdatingAgent::info().id,  &updatingFactory);
+    _cogserver.registerAgent(STIDecayingAgent::info().id,         &stidecayingFactory);
 }
 
 AttentionModule::~AttentionModule()
@@ -54,6 +55,7 @@ AttentionModule::~AttentionModule()
     _cogserver.unregisterAgent(ImportanceDiffusionAgent::info().id);
 #endif
     _cogserver.unregisterAgent(ImportanceUpdatingAgent::info().id);
+    _cogserver.unregisterAgent(STIDecayingAgent::info().id);
     logger().debug("[AttentionModule] exit destructor");
 }
 

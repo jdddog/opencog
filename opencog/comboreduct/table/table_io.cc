@@ -299,15 +299,6 @@ vertex token_to_vertex(const type_node &tipe, const string& token)
         return token;
         break;
 
-    // Ugly hack ... the problem adressed here is that feature
-    // selection has to read and propagate columns of unknown type
-    // (typically, dates, times).  So we hack around this here.
-    case id::ill_formed_type:
-        return enum_t(token);
-        // return id::ill_formed_type;
-        // return id::null_vertex;
-        break;
-
     default:
         stringstream ss;
         ss << "Unable to convert token \"" << token << "\" to type=" << tipe << endl;
@@ -883,8 +874,8 @@ istream& istreamTable_ignore_indices(istream& in, Table& tab,
 
 static istream&
 inferTableAttributes(istream& in, const string& target_feature,
-                     const vector<string>& ignore_features,
-                     type_tree& tt, bool& has_header, bool& is_sparse)
+                              const vector<string>& ignore_features,
+                              type_tree& tt, bool& has_header, bool& is_sparse)
 {
     // maxline is the maximum number of lines to read to infer the
     // attributes. A negative number means reading all lines.
@@ -912,7 +903,7 @@ inferTableAttributes(istream& in, const string& target_feature,
     }
 
     // parse what could be a header
-    const vector<string> maybe_header = tokenizeRow<string>(lines.front());
+    vector<string> maybe_header = tokenizeRow<string>(lines.front());
 
     // determine arity
     arity_t arity = maybe_header.size();
@@ -949,11 +940,7 @@ inferTableAttributes(istream& in, const string& target_feature,
 
     // Determine type signature
     if (has_header) {
-
-        // if unspecified, the target is the first column
         unsigned target_idx = 0;
-
-        // target feature will be ignored
         if (!target_feature.empty()) {
             auto target_it = std::find(maybe_header.begin(), maybe_header.end(),
                                        target_feature);
@@ -1119,8 +1106,6 @@ istream& istreamDenseTable(istream& in, Table& tab,
         string line;
         get_data_line(in, line);
         vector<string> header = tokenizeRow<string>(line);
-
-        // Set target idx
         if (!target_feature.empty()) {
             auto target_it = std::find(header.begin(), header.end(),
                                        target_feature);
@@ -1128,8 +1113,6 @@ istream& istreamDenseTable(istream& in, Table& tab,
                       target_feature.c_str());
             target_idx = std::distance(header.begin(), target_it);
         }
-
-        // Set ignore idxs
         ignore_idxs = get_indices(ignore_features, header);
 
         // get input and output labels from the header
@@ -1160,7 +1143,7 @@ CTable::value_type parseCTableRow(const type_tree& tt, const std::string& row_st
     multi_type_seq input_values = ftv(input_seq);
 
     // convert the outputs string into CTable::counter_t
-    vector<string> output_pair_seq = tokenizeRow<string>(outputs);
+    vector<string> output_pair_seq  = tokenizeRow<string>(outputs);
     CTable::counter_t counter;
     for (const string& pair_str : output_pair_seq) {
         unsigned sep_pos = pair_str.find(":");
@@ -1255,7 +1238,7 @@ ostream& ostreamCTableRow(ostream& out, const CTable::value_type& ctv)
     auto ats = boost::apply_visitor(tsv);
     // print map of outputs
     out << "{";
-    for (auto it = ctv.second.begin(); it != ctv.second.end();) {
+    for(auto it = ctv.second.begin(); it != ctv.second.end();) {
         out << table_fmt_vertex_to_str(it->first) << ":" << it->second;
         if(++it != ctv.second.end())
             out << ",";

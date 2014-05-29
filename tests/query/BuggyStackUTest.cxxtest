@@ -97,13 +97,23 @@ void BuggyStackUTest::setUp(void)
       "opencog/embodiment/AtomSpaceExtensions/embodiment_types.scm, "
 		"tests/query/buggy-stack.scm");
 
-	cogserver().loadModules();
-	load_scm_files_from_config(*as);
+	// Blindly search a bunch of paths hoping to find the files
+	// in one of them ...
+	const char * paths[] = 
+	{
+		"./",
+		"../",
+		"../../",
+		"../../../",
+		NULL
+	};
+	cogserver().loadModules(paths);
+	load_scm_files_from_config(*as, paths);
 
 
 #ifdef HAVE_GUILE
 	// Create an implication link that will be tested.
-	SchemeEval* ev = new SchemeEval(as);
+	SchemeEval* ev = new SchemeEval();
 	restrict = ev->apply("impy", Handle::UNDEFINED);
 	delete ev;
 #endif /* HAVE_GUILE */

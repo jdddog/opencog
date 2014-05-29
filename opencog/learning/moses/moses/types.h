@@ -3,7 +3,6 @@
  *
  * Copyright (C) 2002-2008 Novamente LLC
  * Copyright (C) 2012 Poulin Holdings
- * Copyright (C) 2014 Aidyia Limited
  * All Rights Reserved
  *
  * Written by Moshe Looks, Linas Vepstas
@@ -28,12 +27,12 @@
 
 #include <functional>
 #include <iomanip>
-#include <unordered_set>
 
-#include <boost/algorithm/string/classification.hpp>
-#include <boost/algorithm/string/split.hpp>
+#include <boost/unordered_map.hpp>
 #include <boost/iterator/indirect_iterator.hpp>
 #include <boost/operators.hpp>
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/split.hpp>
 #include <boost/ptr_container/ptr_set.hpp>
 
 #include <opencog/util/functional.h>
@@ -44,6 +43,7 @@
 
 namespace opencog { namespace moses {
 
+using std::binary_function;
 using combo::vertex;
 using boost::indirect_iterator;
 using boost::transform_iterator;
@@ -66,7 +66,12 @@ typedef float score_t;
 static const int io_score_precision = 32;
 
 static const score_t very_best_score = std::numeric_limits<score_t>::max();
-static const score_t very_worst_score = std::numeric_limits<score_t>::lowest();
+
+// below we use 1 - best score and not
+// std::numeric_limits<score_t>::min, please recall that in the STL
+// standard min when applied to a floating type returns the smallest
+// possible representable value
+static const score_t very_worst_score = score_t(1) - very_best_score;
 
 // But modify the default sort ordering for these objects.
 struct composite_score:
@@ -112,10 +117,7 @@ struct composite_score:
         diversity_penalty = penalty;
         update_penalized_score();
     }
-    score_t get_penalty() const
-    {
-        return complexity_penalty + diversity_penalty;
-    }
+    score_t get_penalty() const { return complexity_penalty + diversity_penalty; }
 
     /// Compare penalized scores.  That is, we compare score-penalty
     /// on the right to score-penalty on the left. If the 2
@@ -156,66 +158,35 @@ protected:
 
 extern const composite_score worst_composite_score;
 
-/// Assign a unique ID for each deme.  This is used to keep track of
-/// which deme each candidate comes from. The demeID is stored as a string,
-/// formatted as either a single a single integer EXPANSION or as a pair
-/// EXPANSION.BREADTH_FIRST.   The first is used if there is only one deme
-/// spawned per expansion.  The second form is used if more than one deme
-/// is spawned per expansion
-///
-/// Here, EXPANSION is the number of times that the deme expander has
-/// been called thus far. BREADTH_FIRST is the index of the deme created
-/// by a single call of the deme expander. The initial metapopulation
-/// comes from demeID "0".
-struct demeID_t : public std::string
-{
+// In order to keep track from which deme each candidate comes we
+// assign a unique ID for each deme.
+//
+// The demeID is formatted as followed, either
+//
+// EXPANSION
+//
+// If only one deme is spawned per expansion
+//
+// or
+//
+// EXPANSION.BREADTH_FIRST
+//
+// If more than one deme is spawned per expansion
+//
+// Where EXPANSION is the number of times the deme expander has been
+// called thus far. And BREADTH_FIRST is the index of the deme created
+// by one call of the deme expander. The initial metapopulation comes
+// from demeID "0" by convention.
+struct demeID_t : public std::string {
     demeID_t(unsigned expansion = 0 /* default initial deme */);
     demeID_t(unsigned expansion, unsigned breadth_first);
 };
-
+        
 typedef std::vector<score_t> behavioral_score;
 typedef std::pair<behavioral_score, score_t> penalized_bscore;
-
-class scored_combo_tree
-{
-public:
-    scored_combo_tree(combo::combo_tree tr,
-                      demeID_t id = demeID_t(),
-                      composite_score cs = composite_score(),
-                      penalized_bscore pbs = penalized_bscore())
-        : _tree(tr), _deme_id(id), _cscore(cs), _pbscore(pbs)
-    {}
-
-// private:
-    combo::combo_tree _tree;
-    demeID_t _deme_id;
-    composite_score _cscore;
-    penalized_bscore _pbscore;
-
-public:
-    const combo::combo_tree& get_tree(void) const { return _tree; }
-    combo::combo_tree& get_tree(void) { return _tree; }
-
-    const demeID_t get_demeID() const { return _deme_id; }
-    demeID_t get_demeID() { return _deme_id; }
-
-    const penalized_bscore& get_pbscore(void) const
-    {
-       return _pbscore;
-    }
-    penalized_bscore& get_pbscore(void)
-    {
-       return _pbscore;
-    }
-    const composite_score& get_composite_score(void) const
-    {
-       return _cscore;
-    }
-    composite_score& get_composite_score(void)
-    {
-       return _cscore;
-    }
-};
+typedef std::pair<penalized_bscore, composite_score> composite_penalized_bscore;
+typedef std::pair<composite_penalized_bscore, demeID_t> cpbscore_demeID;
+typedef std::pair<combo::combo_tree, cpbscore_demeID> pbscored_combo_tree;
 
 ///////////////////////////
 // convenience accessors //
@@ -223,27 +194,59 @@ public:
 
 score_t get_penalized_score(const composite_score& sc);
 
+const combo::combo_tree& get_tree(const pbscored_combo_tree& pbst);
+combo::combo_tree& get_tree(pbscored_combo_tree& pbst);
+
+const composite_penalized_bscore& get_composite_penalized_bscore(const pbscored_combo_tree& pbst);
+composite_penalized_bscore& get_composite_penalized_bscore(pbscored_combo_tree& pbst);
+
+const cpbscore_demeID& get_cpbscore_demeID(const pbscored_combo_tree& pbst);
+cpbscore_demeID& get_cpbscore_demeID(pbscored_combo_tree& pbst);
+
+demeID_t get_demeID(const pbscored_combo_tree& pbst);
+
+// The following function creates an overloading ambiguity in gcc
+// 4.6.3 (apparently fixed in gcc 4.7.2)
+// const composite_score& get_composite_score(const composite_penalized_bscore& ctbs);
+const composite_score& get_composite_score(const pbscored_combo_tree& bsct);
+composite_score& get_composite_score(composite_penalized_bscore& ctbs);
+composite_score& get_composite_score(pbscored_combo_tree& bsct);
+
+score_t get_penalized_score(const composite_score& sc);
+score_t get_penalized_score(const composite_penalized_bscore& cpb);
+score_t get_penalized_score(const pbscored_combo_tree& st);
+
 score_t get_score(const composite_score& ts);
-score_t get_score(const scored_combo_tree& bst);
+score_t get_score(const composite_penalized_bscore& ts);
+score_t get_score(const pbscored_combo_tree& bst);
 
 complexity_t get_complexity(const composite_score& ts);
-complexity_t get_complexity(const scored_combo_tree& bst);
+complexity_t get_complexity(const composite_penalized_bscore& ts);
+complexity_t get_complexity(const pbscored_combo_tree& bst);
 
 score_t get_complexity_penalty(const composite_score& ts);
-score_t get_complexity_penalty(const scored_combo_tree& bst);
+score_t get_complexity_penalty(const composite_penalized_bscore& ts);
+score_t get_complexity_penalty(const pbscored_combo_tree& bst);
 
 score_t get_diversity_penalty(const composite_score& ts);
-score_t get_diversity_penalty(const scored_combo_tree& bst);
+score_t get_diversity_penalty(const composite_penalized_bscore& ts);
+score_t get_diversity_penalty(const pbscored_combo_tree& bst);
 
 score_t get_penalty(const composite_score& ts);
-score_t get_penalty(const scored_combo_tree& bst);
+score_t get_penalty(const composite_penalized_bscore& ts);
+score_t get_penalty(const pbscored_combo_tree& bst);
 
+const penalized_bscore& get_pbscore(const composite_penalized_bscore& ts);
+const penalized_bscore& get_pbscore(const pbscored_combo_tree& bst);
+penalized_bscore& get_pbscore(composite_penalized_bscore& ts);
+penalized_bscore& get_pbscore(pbscored_combo_tree& bst);
 
 const behavioral_score& get_bscore(const penalized_bscore& pbs);
-const behavioral_score& get_bscore(const scored_combo_tree& bst);
+const behavioral_score& get_bscore(const composite_penalized_bscore& cbs);
+const behavioral_score& get_bscore(const pbscored_combo_tree& bst);
 
 /**
- * greater_than operator for scored_combo_tree.  The order is
+ * greater_than operator for pbscored_combo_tree.  The order is
  * determined by the composite score; that is, the composite
  * scores are compared to determin ordering.
  *
@@ -252,42 +255,35 @@ const behavioral_score& get_bscore(const scored_combo_tree& bst);
  * metapopulation or the deme with candidates with undefined scores
  * (as these are usually very bad candidates).
  */
-struct scored_combo_tree_greater
-    : public std::binary_function<scored_combo_tree, scored_combo_tree, bool>
+struct pbscored_combo_tree_greater : public binary_function<pbscored_combo_tree,
+                                                            pbscored_combo_tree,
+                                                            bool>
 {
-    bool operator()(const scored_combo_tree&,
-                    const scored_combo_tree&) const;
+    bool operator()(const pbscored_combo_tree& bs_tr1,
+                    const pbscored_combo_tree& bs_tr2) const;
 };
+typedef std::set<pbscored_combo_tree,
+                 pbscored_combo_tree_greater> pbscored_combo_tree_set;
+typedef pbscored_combo_tree_set::iterator pbscored_combo_tree_set_it;
+typedef pbscored_combo_tree_set::const_iterator pbscored_combo_tree_set_cit;
 
-struct scored_combo_tree_hash
-     : public std::unary_function<scored_combo_tree, size_t>
-{
-    size_t operator()(const scored_combo_tree&) const;
-};
+typedef boost::ptr_set<pbscored_combo_tree,
+                       pbscored_combo_tree_greater> pbscored_combo_tree_ptr_set;
+typedef pbscored_combo_tree_ptr_set::iterator pbscored_combo_tree_ptr_set_it;
+typedef pbscored_combo_tree_ptr_set::const_iterator pbscored_combo_tree_ptr_set_cit;
 
-struct scored_combo_tree_equal
-     : public std::binary_function<scored_combo_tree, scored_combo_tree, bool>
-{
-    bool operator()(const scored_combo_tree&,
-                    const scored_combo_tree&) const;
-};
+typedef std::vector<pbscored_combo_tree> pbscored_combo_tree_seq;
+typedef pbscored_combo_tree_seq::iterator pbscored_combo_tree_seq_it;
+typedef pbscored_combo_tree_seq::const_iterator pbscored_combo_tree_seq_cit;
 
-/// scored_combo_tree_set provides an O(1) way of determining if a combo
-/// tree is in the set, or not (and getting its score, if it is).
-typedef std::unordered_set<scored_combo_tree,
-                 scored_combo_tree_hash,
-                 scored_combo_tree_equal> scored_combo_tree_set;
-typedef scored_combo_tree_set::iterator scored_combo_tree_set_it;
-typedef scored_combo_tree_set::const_iterator scored_combo_tree_set_cit;
-
-typedef boost::ptr_set<scored_combo_tree,
-                       scored_combo_tree_greater> scored_combo_tree_ptr_set;
-typedef scored_combo_tree_ptr_set::iterator scored_combo_tree_ptr_set_it;
-typedef scored_combo_tree_ptr_set::const_iterator scored_combo_tree_ptr_set_cit;
-
-typedef std::vector<scored_combo_tree> scored_combo_tree_seq;
-typedef scored_combo_tree_seq::iterator scored_combo_tree_seq_it;
-typedef scored_combo_tree_seq::const_iterator scored_combo_tree_seq_cit;
+/// metapop_candidates provides an O(1) way of determining if a combo
+/// tree is in the map, or not (and getting its score, if it is).
+typedef boost::unordered_map<combo::combo_tree,
+                             pbscored_combo_tree::second_type,
+                             boost::hash<combo::combo_tree> > metapop_candidates;
+typedef metapop_candidates::value_type metapop_candidate;
+typedef metapop_candidates::iterator metapop_candidates_it;
+typedef metapop_candidates::const_iterator metapop_candidates_cit;
 
 // ostream functions
 template<typename Out>
@@ -314,65 +310,60 @@ static const std::string complexity_penalty_prefix_str = "complexity penalty:";
 static const std::string diversity_penalty_prefix_str = "diversity penalty:";
 static const std::string penalized_score_prefix_str = "penalized score:";
 static const std::string behavioral_score_prefix_str = "behavioral score:";
-
 template<typename Out>
-Out& ostream_scored_combo_tree(Out& out, const scored_combo_tree& cnd,
+Out& ostream_pbscored_combo_tree(Out& out, const pbscored_combo_tree& cnd,
                                  bool output_score = true,
                                  bool output_penalty = false,
                                  bool output_bscore = false,
                                  bool output_python = false)
 {
-    return ostream_combo_tree_cpbscore(out,
-                                       cnd.get_tree(),
-                                       cnd.get_composite_score(),
-                                       cnd.get_pbscore(),
-                                       output_score,
-                                       output_penalty,
-                                       output_bscore,
-                                       output_python);
+    return ostream_combo_tree_composite_pbscore(out, get_tree(cnd),
+                                                get_composite_penalized_bscore(cnd),
+                                                output_score,
+                                                output_penalty,
+                                                output_bscore,
+                                                output_python);
 }
-
 template<typename Out>
-Out& ostream_combo_tree_cpbscore(Out& out,
-                                 const combo::combo_tree& tr,
-                                 const composite_score& cs,
-                                 const penalized_bscore& pbs,
-                                 bool output_score = true,
-                                 bool output_penalty = false,
-                                 bool output_bscore = false,
-                                 bool output_python = false)
+Out& ostream_combo_tree_composite_pbscore(Out& out,
+                                          const combo::combo_tree& tr,
+                                          const composite_penalized_bscore& cpb,
+                                          bool output_score = true,
+                                          bool output_penalty = false,
+                                          bool output_bscore = false,
+                                          bool output_python = false)
 {
     if (output_python)
-        return ostream_combo_tree_cpbscore_python(out, tr, cs, pbs,
-                                                  output_score,
-                                                  output_penalty,
-                                                  output_bscore);
+        return ostream_combo_tree_composite_pbscore_python(out, tr, cpb,
+                                                           output_score,
+                                                           output_penalty,
+                                                           output_bscore);
 
     if (output_score)
         out << std::setprecision(io_score_precision)
-            << cs.get_score() << " ";
-
+            << get_score(cpb) << " ";
+    
     out << tr << std::endl;
 
     if (output_penalty)
         out << complexity_prefix_str << " "
-            << cs.get_complexity() << std::endl
+            << get_complexity(cpb) << std::endl
             << complexity_penalty_prefix_str << " "
-            << cs.get_complexity_penalty() << std::endl
+            << get_complexity_penalty(cpb) << std::endl
             << diversity_penalty_prefix_str << " "
-            << cs.get_diversity_penalty() << std::endl
+            << get_diversity_penalty(cpb) << std::endl
             << penalized_score_prefix_str << " "
-            << cs.get_penalized_score() << std::endl;
+            << get_penalized_score(cpb) << std::endl;
 
     if (output_bscore)
         ostream_behavioral_score(out << behavioral_score_prefix_str << " ",
-                                 get_bscore(pbs)) << std::endl;
+                                 get_bscore(cpb)) << std::endl;
 
     return out;
 }
 
-// Stream in scored_combo_tree, use the same format as
-// ostream_scored_combo_tree. Note that for now we assume that combo
+// Stream in pbscored_combo_tree, use the same format as
+// ostream_pbscored_combo_tree. Note that for now we assume that combo
 // tree is always preceeded by the score, it's easier that way.
 //
 // You may want to set 'in' to send exceptions if something goes wrong
@@ -380,22 +371,22 @@ Out& ostream_combo_tree_cpbscore(Out& out,
 //
 // in.exceptions(ifstream::failbit | ifstream::badbit | ifstream::eofbit);
 //
-// so a bad parse is detected (maybe istream_scored_combo_tree should
+// so a bad parse is detected (maybe istream_pbscored_combo_tree should
 // set it automatically).
 //
 // TODO: if the istream doesn't end by a bscore then it will
 // completely exhaust it.
 template<typename In>
-scored_combo_tree istream_scored_combo_tree(In& in) {
+pbscored_combo_tree istream_pbscored_combo_tree(In& in) {
 
     // parse score
     score_t sc;
     in >> sc;
-
+    
     // parse combo tree
     combo::combo_tree tr;
     in >> tr;
-
+    
     // parse the rest
     complexity_t cpx = 0;
     score_t cpx_penalty = 0, diversity_penalty = 0, penalized_score = 0;
@@ -439,24 +430,25 @@ scored_combo_tree istream_scored_combo_tree(In& in) {
     }
     // assign to candidate
     combo::combo_tree tr_test = tr;
-
+    
     penalized_bscore pbs(bs, cpx_penalty);
     composite_score cs(sc, cpx, cpx_penalty, diversity_penalty);
-    return scored_combo_tree(tr, /* default demeID */ 0, cs, pbs);
-}
+    composite_penalized_bscore cbs(pbs, cs);
+    cpbscore_demeID cbs_demeID(cbs, /* default demeID */ 0);
+    return pbscored_combo_tree(tr, cbs_demeID);
+}                                      
 
 /**
  * stream out a candidate along with their scores (optionally
  * complexity and bscore) as a python module
  */
 template<typename Out>
-Out& ostream_combo_tree_cpbscore_python(Out& out,
-                                        const combo::combo_tree& tr,
-                                        const composite_score& cs,
-                                        const penalized_bscore& pbs,
-                                        bool output_score = true,
-                                        bool output_penalty = false,
-                                        bool output_bscore = false)
+Out& ostream_combo_tree_composite_pbscore_python(Out& out,
+                                                 const combo::combo_tree& tr,
+                                                 const composite_penalized_bscore& cpb,
+                                                 bool output_score = true,
+                                                 bool output_penalty = false,
+                                                 bool output_bscore = false)
 {
     out << "#!/usr/bin/env python" << std::endl
         << "from operator import *" << std::endl
@@ -471,12 +463,12 @@ Out& ostream_combo_tree_cpbscore_python(Out& out,
 
     if (output_score) {
         out << "#score: " << std::setprecision(io_score_precision)
-            << cs.get_score() << std::endl;
+            << get_score(cpb) << std::endl;
     }
     if (output_penalty) {
-        out << " #complexity: " << cs.get_complexity() << std::endl;
-        out << " #complexity_penalty: " << cs.get_complexity_penalty() << std::endl;
-        out << " #diversity_penalty: " << cs.get_diversity_penalty() << std::endl;
+        out << " #complexity: " << get_complexity(cpb) << std::endl;
+        out << " #complexity_penalty: " << get_complexity_penalty(cpb) << std::endl;
+        out << " #diversity_penalty: " << get_diversity_penalty(cpb) << std::endl;
     }
 
     out << std::endl << "def moses_eval(i):" << std::endl << "    return ";
@@ -485,7 +477,7 @@ Out& ostream_combo_tree_cpbscore_python(Out& out,
 
     if (output_bscore) {
         out << std::endl<< "#bscore: " ;
-        ostream_penalized_bscore(out, pbs);
+        ostream_penalized_bscore(out, cpb.first);
         out << std::endl;
     }
     return out;
@@ -502,6 +494,14 @@ inline std::ostream& operator<<(std::ostream& out,
                << ", complexity penalty=" << ts.get_complexity_penalty()
                << ", diversity penalty=" << ts.get_diversity_penalty()
                << "]";
+}
+
+inline std::ostream& operator<<(std::ostream& out,
+                                const moses::composite_penalized_bscore& s)
+{
+    moses::ostream_penalized_bscore(out, s.first);
+    out << ", " << s.second;
+    return out;
 }
 
 inline std::ostream& operator<<(std::ostream& out,

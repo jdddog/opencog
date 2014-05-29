@@ -254,27 +254,6 @@ ELSE (HYPERTABLE_FOUND)
 
 ENDIF (HYPERTABLE_FOUND)
 
-# Look for libiberty-dev. Needed for pretty stack printing.
-FIND_PACKAGE(Iberty)
-IF (IBERTY_FOUND)
-	MESSAGE(STATUS "Libiberty found.")
-	ADD_DEFINITIONS(-DHAVE_IBERTY)
-	SET(HAVE_IBERTY 1)
-ELSE (IBERTY_FOUND)
-	MESSAGE(STATUS "Libiberty-dev missing: No pretty stack-trace printing.")
-ENDIF (IBERTY_FOUND)
-
-
-# Lapack is needed for BLOPEX
-FIND_PACKAGE(LAPACK)
-IF (LAPACK_FOUND)
-	# MESSAGE(STATUS "LAPACK found.")
-	ADD_DEFINITIONS(-DHAVE_LAPACK)
-	SET(HAVE_LAPACK 1)
-ELSE (LAPACK_FOUND)
-	MESSAGE(STATUS "LAPACK missing: needed for blopex-based clustering.")
-ENDIF (LAPACK_FOUND)
-
 
 # Link-Gramar is needed for the Viterbi parser
 # Only 4.7.12 or newer has the required read-dict API in it.
@@ -733,7 +712,6 @@ ADD_SUBDIRECTORY(doc EXCLUDE_FROM_ALL)
 # Show a summary of what we got
 SUMMARY_ADD("AtomSpace" "A weighted and typed hypergraph database" HAVE_ATOMSPACE)
 SUMMARY_ADD("Attention" "Agents for attention allocation dynamics" HAVE_ATTENTION)
-SUMMARY_ADD("Blopex" "BLOPEX block eigenvalue solver" HAVE_LAPACK)
 SUMMARY_ADD("ComboReduct" "Library for reduction of combo program trees" HAVE_COMBOREDUCT)
 SUMMARY_ADD("Cython bindings" "Cython (python) bindings" HAVE_CYTHON)
 SUMMARY_ADD("Dim. Embedding" "Compute dimensional embedding of the AtomSpace" HAVE_DIMEMBED)
@@ -748,7 +726,7 @@ SUMMARY_ADD("Scheme bindings" "Scheme bindings and shell" HAVE_GUILE)
 SUMMARY_ADD("Server" "The CogServer" HAVE_SERVER)
 SUMMARY_ADD("Spatial" "Vizualisation of the 3D spacemap" HAVE_SPATIAL_TOOLS)
 SUMMARY_ADD("SQL persistance" "Save/Restore of AtomSpace to database" HAVE_PERSIST)
-SUMMARY_ADD("StackPrint" "Pretty printing of stack traces" HAVE_BFD AND HAVE_IBERTY)
+SUMMARY_ADD("StackPrint" "Pretty printing of stack traces" HAVE_BFD)
 SUMMARY_ADD("Ubigraph" "Visualisation of the AtomSpace" HAVE_UBIGRAPH)
 SUMMARY_ADD("Util" "General utility library" HAVE_UTIL)
 SUMMARY_ADD("Viterbi" "Viterbi Parser for Link Grammar" HAVE_VITERBI)

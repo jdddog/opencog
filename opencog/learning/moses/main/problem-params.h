@@ -90,7 +90,7 @@ struct problem_params
     // metapop_param
     int max_candidates;
     bool reduce_all;
-    int revisit;
+    unsigned revisit;
     double noise;
     score_t complexity_temperature;
     score_t complexity_ratio;

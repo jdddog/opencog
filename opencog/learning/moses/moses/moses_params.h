@@ -32,7 +32,7 @@ namespace opencog {
 namespace moses {
 
 /// A map between hostname and number of jobs allocated.
-typedef std::map<std::string, unsigned> jobs_t;
+typedef std::map<string, unsigned> jobs_t;
 
 /**
  * parameters to decide how to run moses
@@ -46,9 +46,9 @@ struct moses_parameters
                      int _max_evals = 10000,
                      int _max_gens = -1,
                      score_t _max_score = 0,
-                     int _max_cnd_output = -1) :
-        local(_local), mpi(false), force_feed(false), jobs(_jobs), vm(_vm),
-        max_evals(_max_evals), max_gens(_max_gens), max_score(_max_score),
+                     int _max_cnd_output = -1)
+        : local(_local), mpi(false), force_feed(false), jobs(_jobs), vm(_vm),
+          max_evals(_max_evals), max_gens(_max_gens), max_score(_max_score),
         max_time(INT_MAX), max_cnd_output(_max_cnd_output)
     {}
 

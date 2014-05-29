@@ -103,11 +103,21 @@ void StackMoreUTest::setUp(void)
 		"tests/query/stackmore-u-o.scm, "
 		"tests/query/stackmore-u-u.scm");
 
-	cogserver().loadModules();
-	load_scm_files_from_config(*as);
+	// Blindly search a bunch of paths hoping to find the files
+	// in one of them ...
+	const char * paths[] = 
+	{
+		"./",
+		"../",
+		"../../",
+		"../../../",
+		NULL
+	};
+	cogserver().loadModules(paths);
+	load_scm_files_from_config(*as, paths);
 
 	// Create an implication link that will be tested.
-	SchemeEval* eval = new SchemeEval(as);
+	SchemeEval* eval = new SchemeEval();
 	bind_oo = eval->apply("bind_oo", Handle::UNDEFINED);
 	bind_ou = eval->apply("bind_ou", Handle::UNDEFINED);
 	bind_uo = eval->apply("bind_uo", Handle::UNDEFINED);

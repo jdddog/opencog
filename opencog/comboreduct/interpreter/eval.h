@@ -26,6 +26,7 @@
 #define _COMBO_EVAL_H
 
 #include <exception>
+#include <boost/unordered_map.hpp>
 
 #include <opencog/util/tree.h>
 #include <opencog/util/numeric.h>
@@ -33,6 +34,7 @@
 #include <opencog/util/mt19937ar.h>
 
 #include "../combo/vertex.h"
+#include "../combo/using.h"
 #include "../combo/variable_unifier.h"
 #include "../crutil/exception.h"
 #include "../type_checker/type_tree.h"

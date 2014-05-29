@@ -1578,7 +1578,7 @@ void PAI::processAgentActionPlanResult(char* agentID, unsigned long tsValue, con
         }
     }
 
-    logger().warn("PAI - avatar id %s (%s), name: %s, status: %s, statusCode: %d", agentID, internalAgentId.c_str(), name.c_str(), status, statusCode);
+    logger().warn("PAI - pet id %s (%s), name: %s, status: %s, statusCode: %d", agentID, internalAgentId.c_str(), name.c_str(), status, statusCode);
 
     // This is a feedback for a sent action plan
     XMLString::transcode(SEQUENCE_ATTRIBUTE, tag, PAIUtils::MAX_TAG_LENGTH);
@@ -1824,7 +1824,7 @@ void PAI::processInstruction(DOMElement * element)
 
 #ifdef HAVE_GUILE
     if (parsedSentenceText != NULL){
-        SchemeEval* evaluator = new SchemeEval(&atomSpace); 
+        SchemeEval* evaluator = new SchemeEval(); 
         std::string scheme_expression, scheme_return_value; 
 
         // Clean up all the information of previous sentence, such as detach 
@@ -3367,7 +3367,9 @@ void PAI::setActionPlanStatus(ActionPlanID& planId, unsigned int sequence,
             }
         }
 
-        for (unsigned seqNumber : seqNumbers) {
+        set<unsigned int>::const_iterator itr;
+        for (itr = seqNumbers.begin(); itr != seqNumbers.end(); itr++) {
+            unsigned int seqNumber = *itr;
             const char* predicateName = NULL;
 
             switch (statusCode) {

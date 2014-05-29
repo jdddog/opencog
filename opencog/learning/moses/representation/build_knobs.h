@@ -33,10 +33,12 @@
 
 #include "field_set.h"
 #include "representation.h"
+#include "../moses/using.h"
 
 namespace opencog { namespace moses {
 
 using namespace combo;
+using boost::ptr_vector;
 
 // need to call a generator method... (dispatched based on type
 
@@ -110,7 +112,7 @@ protected:
     void logical_canonize(combo_tree::iterator);
 
     template<typename It>
-    boost::ptr_vector<logical_subtree_knob> logical_probe_rec(
+    ptr_vector<logical_subtree_knob> logical_probe_rec(
                         combo_tree::iterator subtree,
                         combo_tree& exemplar,
                         combo_tree::iterator it,

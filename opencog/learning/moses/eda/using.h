@@ -27,6 +27,8 @@
 #include <boost/bind.hpp>
 #include <boost/iterator/counting_iterator.hpp>
 #include <boost/iterator/transform_iterator.hpp>
+#include <boost/iterator/permutation_iterator.hpp>
+#include <boost/iterator/indirect_iterator.hpp>
 #include <boost/utility/result_of.hpp>
 #include <boost/next_prior.hpp>
 #include <boost/type_traits.hpp>
@@ -46,6 +48,8 @@ using boost::bind;
 using boost::ref;
 using boost::make_counting_iterator;
 using boost::make_transform_iterator;
+using boost::make_permutation_iterator;
+using boost::make_indirect_iterator;
 using boost::result_of;
 using boost::next;
 using boost::prior;

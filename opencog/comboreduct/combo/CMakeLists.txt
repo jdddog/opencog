@@ -20,6 +20,7 @@ INSTALL(FILES
 	procedure_repository.h
 	simple_nn.h
 	tree_generation.h
+	using.h
 	variable_unifier.h	
 	vertex.h
 

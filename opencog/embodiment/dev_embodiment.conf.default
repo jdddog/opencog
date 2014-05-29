@@ -410,11 +410,11 @@ SERVER_PORT           = 17001
 
 
 # modules that will be loaded at the cogserver start
-MODULES               = query/libQueryModule.so,
-                        server/libbuiltinreqs.so,
-                        shell/libscheme-shell.so,
-                        persist/sql/libpersist.so,
-                        cython/libPythonModule.so
+MODULES               = ./libQueryModule.so,
+                        ./libbuiltinreqs.so,
+                        ./libscheme-shell.so,
+                        ./libpersist.so,
+                        ./libPythonModule.so
 
 # scheme script files that will be loaded during the system startup
 SCM_PRELOAD           = scm/core_types.scm,
@@ -439,8 +439,8 @@ SCM_PRELOAD           = scm/core_types.scm,
                         feeling_updaters.scm,
                         demand_updaters.scm,
                         modulator_updaters.scm,
-                        stimulus_updaters.scm
-#			pm_test_corpus.scm
+                        stimulus_updaters.scm,
+			pm_test_corpus.scm
 
 # Use a comma separated list for multiple dirs
 PYTHON_EXTENSION_DIRS  = ../../../opencog/python/web/api

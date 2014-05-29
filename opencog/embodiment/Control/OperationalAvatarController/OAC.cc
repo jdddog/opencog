@@ -257,6 +257,9 @@ void OAC::init(const std::string & myId, const std::string & ip, int portNumber,
                          &importanceUpdatingAgentFactory);
     importanceUpdatingAgent = createAgent<ImportanceUpdatingAgent>();
 
+    registerAgent( STIDecayingAgent::info().id, &stiDecayingAgentFactory);
+    stiDecayingAgent = createAgent<STIDecayingAgent>();
+
 //    if (config().get_bool("PROCEDURE_INTERPRETER_ENABLED")) {
         // adds the same procedure interpreter agent to schedule again
 //        this->startAgent(procedureInterpreterAgent);
@@ -353,6 +356,12 @@ void OAC::init(const std::string & myId, const std::string & ip, int portNumber,
         this->startAgent(importanceUpdatingAgent);
     }
 
+    if (config().get_bool("STI_DECAYING_ENABLED")) {
+        this->stiDecayingAgent->setFrequency(
+           config().get_int( "STI_DECAYING_CYCLE_PERIOD" ) );
+        this->startAgent(stiDecayingAgent);
+    }
+
 #ifdef HAVE_CYTHON
     if ( config().get_bool("FISHGRAM_ENABLED") ) {
         this->fishgramAgent = PyMindAgentPtr(new PyMindAgent(*this, "fishgram", "FishgramMindAgent"));
@@ -373,6 +382,18 @@ void OAC::init(const std::string & myId, const std::string & ip, int portNumber,
 
     if ( config().get_bool("ENABLE_PATTERN_MINER"))
     {
+        if ( load_scm_file( *(this->atomSpace), "pm_test_corpus.scm" ) == 0  )
+            logger().info( "OAC::%s - Loaded pattern miner test corpus file: '%s'",
+                            __FUNCTION__,
+                           "pm_test_corpus.scm"
+                         );
+        else
+            logger().error( "OAC::%s - Failed to load pattern miner test corpus file: '%s'",
+                             __FUNCTION__,
+                            "pm_test_corpus.scm"
+                          );
+
+
         this->patternMiningAgent = PatternMiningAgentPtr(new PatternMiningAgent(*this));
         this->startAgent(this->patternMiningAgent);
     }
@@ -438,6 +459,8 @@ void OAC::attention_allocation(OAC * oac)
         std::cout<<"importanceSpreadingAgent "<<i<<std::endl; 
         oac->runAgent(oac->importanceUpdatingAgent); 
         std::cout<<"importanceUpdatingAgent "<<i<<std::endl; 
+        oac->runAgent(oac->stiDecayingAgent); 
+        std::cout<<"stiDecayingAgent "<<i<<std::endl; 
         std::cout<<"attention_allocation Done: "<<i<<std::endl; 
     }
 }
@@ -470,7 +493,7 @@ int OAC::addRulesToAtomSpace()
 */
 #ifdef HAVE_GUILE
     // Set PET_HANDLE and OWNER_HANDLE for the Scheme shell before loading rules file
-    SchemeEval* evaluator = new SchemeEval(atomSpace);
+    SchemeEval* evaluator = new SchemeEval();
     std::string scheme_expression, scheme_return_value;
 
     scheme_expression =  "(set! PET_HANDLE (get_agent_handle \"" + 
@@ -623,6 +646,7 @@ OAC::~OAC()
 //    delete (importanceDiffusionAgent); 
     delete (importanceSpreadingAgent); 
     delete (importanceUpdatingAgent); 
+    delete (stiDecayingAgent); 
 
 #ifdef HAVE_CYTHON
     delete (fishgramAgent); 
@@ -936,6 +960,11 @@ void OAC::schemaSelection()
 //  if ( pet->getMode( ) != PLAYING && pet->getMode( ) != LEARNING ) {
 //    pet->setMode( PLAYING );
 //  } // if
+}
+
+void OAC::decayShortTermImportance()
+{
+    atomSpace->decayShortTermImportance();
 }
 
 const std::string OAC::getPath(const std::string& petId, const std::string& filename)

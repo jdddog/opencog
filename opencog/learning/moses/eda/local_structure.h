@@ -44,9 +44,6 @@ namespace moses {
 // a no-op; that is, it doesn't create any dependency trees.
 
 using std::vector;
-using boost::make_counting_iterator;
-using boost::make_transform_iterator;
-
 
 // dtree == dependency tree
 //

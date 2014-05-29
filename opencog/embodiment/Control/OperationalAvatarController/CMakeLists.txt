@@ -5,6 +5,7 @@ ADD_LIBRARY (oac SHARED
 	PetMessageSender
 	PVPActionPlanSender
 	ProcedureInterpreterAgent
+	ImportanceDecayAgent
 	ActionSelectionAgent
 	EntityExperienceAgent
 	PsiModulatorUpdaterAgent
@@ -72,7 +73,6 @@ ADD_EXECUTABLE (OACTester OACTester.cc)
 TARGET_LINK_LIBRARIES (OACTester
 	oac
 	comboreduct
-	comboant
 	AvatarComboVocabulary
 	AtomSpaceExtensions
 	ImaginaryLife

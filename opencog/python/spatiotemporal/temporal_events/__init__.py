@@ -5,7 +5,7 @@ from spatiotemporal.time_intervals import check_is_time_interval, TimeInterval
 from spatiotemporal.temporal_events.membership_function import MembershipFunction, ProbabilityDistributionPiecewiseLinear
 from spatiotemporal.unix_time import UnixTime
 from utility.generic import convert_dict_to_sorted_lists
-from utility.functions import FunctionPiecewiseLinear, FUNCTION_ZERO
+from utility.geometric import FunctionPiecewiseLinear, FUNCTION_ZERO
 
 __author__ = 'keyvan'
 
@@ -38,10 +38,11 @@ class TemporalEvent(list, TimeInterval):
         self.interval_ending = TimeInterval(ending, b, bins_ending)
         list.__init__(self, self.interval_beginning + self.interval_ending)
         TimeInterval.__init__(self, a, b, bins)
-        if relation_formula is None:
-            relation_formula = RelationFormulaConvolution()
-        elif not isinstance(relation_formula, BaseRelationFormula):
-            raise TypeError("'relation_formula' should be of type 'BaseRelationFormula'")
+        # if relation_formula is None:
+        #     relation_formula = RelationFormulaGeometricMean()
+        # elif not isinstance(relation_formula, BaseRelationFormula):
+        #     raise TypeError("'relation_formula' should be of type 'BaseRelationFormula'")
+        relation_formula = RelationFormulaGeometricMean()
         relation_formula.bounds[distribution_beginning] = self.a, self.beginning
         relation_formula.bounds[distribution_ending] = self.ending, self.b
         self._formula_creator = FormulaCreator(relation_formula)
@@ -125,13 +126,6 @@ class TemporalEvent(list, TimeInterval):
     def ending(self):
         return self._ending
 
-    def __getitem__(self, portion_index):
-        if portion_index not in [0, 1]:
-            raise IndexError("TemporalEvent object only accepts '0' or '1' as index")
-        if portion_index == 0:
-            return self.distribution_beginning
-        return self.distribution_ending
-
     def __mul__(self, other):
         return self.temporal_relations_with(other)
 
@@ -192,7 +186,7 @@ class TemporalInstance(TimeInterval):
 
 
 if __name__ == '__main__':
-    from utility.functions import integral
+    from utility.geometric import integral
     from scipy.stats import norm
     import matplotlib.pyplot as plt
 

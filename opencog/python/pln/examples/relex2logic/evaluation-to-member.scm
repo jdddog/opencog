@@ -1,11 +1,17 @@
-; Socrates is a man.
-(ConceptNode "Socrates" (stv .001 1))
-(ConceptNode "man" (stv .01 1))
-(ConceptNode "air" (stv .01 1))
+; Examples in Scheme format; not usable without the cogserver due to
+; https://github.com/opencog/opencog/issues/530
+; Therefore, these are also defined in the Python code using the rather
+; verbose syntax
 
-(InheritanceLink (stv 1.0 1.0)
+; Socrates is a man.
+; Todo: The Relex2Logic rules require modification to properly translate
+; this relationship; see:
+; https://github.com/opencog/opencog/issues/530
+(EvaluationLink (stv 1.0 1.0)
+  (PredicateNode "be")
+  (ListLink
     (ConceptNode "Socrates")
-    (ConceptNode "man"))
+    (ConceptNode "man")))
 
 ; Men breathe air.
 (EvaluationLink (stv 1.0 1.0)
@@ -13,3 +19,9 @@
   (ListLink
     (ConceptNode "man")
     (ConceptNode "air")))
+
+; Example predicate with only 1 argument
+(EvaluationLink (stv 1.0 1.0)
+    (PredicateNode "smokes")
+    (ListLink
+        (ConceptNode "Anna")))

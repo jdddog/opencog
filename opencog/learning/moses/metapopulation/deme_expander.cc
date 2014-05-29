@@ -25,10 +25,10 @@
 namespace opencog {
 namespace moses {
 
-string_seq deme_expander::fs_to_names(const std::set<arity_t>& fs,
+string_seq deme_expander::fs_to_names(const set<arity_t>& fs,
                                       const string_seq& ilabels) const
 {
-    std::vector<std::string> fs_names;
+    vector<string> fs_names;
     for (arity_t i : fs)
         fs_names.push_back(ilabels[i]);
     return fs_names;
@@ -105,7 +105,7 @@ bool deme_expander::create_demes(const combo_tree& exemplar, int n_expansions)
     } else
         demeIDs.emplace_back(n_expansions + 1);
 
-    // Limit the number of features used to
+    // [HIGHLY EXPERIMENTAL]. Limit the number of features used to
     // build the exemplar to a more manageable number.  Basically,
     // this is 'on-the-fly' feature selection.  This differs from an
     // ordinary, one-time only, up-front round of feature selection by
@@ -162,7 +162,7 @@ bool deme_expander::create_demes(const combo_tree& exemplar, int n_expansions)
 
             // add the complement of the selected features to ignore_ops
             unsigned arity = festor._ctable.get_arity();
-            std::set<arity_t> ignore_idxs;
+            set<arity_t> ignore_idxs;
             vertex_set ignore_ops, considered_args;
             for (unsigned i = 0; i < arity; i++) {
                 argument arg(i + 1);
@@ -231,7 +231,7 @@ vector<unsigned> deme_expander::optimize_demes(int max_evals, time_t max_time)
     for (unsigned i = 0; i < _demes.size(); i++)
     {
         if (logger().isDebugEnabled()) {
-            std::stringstream ss;
+            stringstream ss;
             ss << "Optimize deme " << _demes[i].getID() << "; "
                << "max evaluations allowed: " << max_evals_per_deme;
             logger().debug(ss.str());
@@ -281,7 +281,7 @@ vector<unsigned> deme_expander::optimize_demes(int max_evals, time_t max_time)
     if (_params.fstor) {
         // reset scorer to use all variables (important so that
         // behavioral score is consistent across generations
-        std::set<arity_t> empty_idxs;
+        set<arity_t> empty_idxs;
         _cscorer.ignore_idxs(empty_idxs);
     }
 

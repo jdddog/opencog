@@ -6,6 +6,7 @@ INSTALL(FILES
 	mpi_moses.h
 	partial.h
 	types.h
+	using.h
 
 	DESTINATION
 

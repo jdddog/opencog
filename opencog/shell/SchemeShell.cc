@@ -26,7 +26,6 @@
 #include <opencog/util/Logger.h>
 #include <opencog/guile/SchemeEval.h>
 #include <opencog/server/ConsoleSocket.h>
-#include <opencog/server/CogServer.h>
 
 #include "SchemeShell.h"
 
@@ -59,7 +58,7 @@ void SchemeShell::set_socket(ConsoleSocket *s)
 	// Let the generic shell do the basic work.
 	GenericShell::set_socket(s);
 
-	if (!evaluator) evaluator = new SchemeEval(&cogserver().getAtomSpace());
+	if (!evaluator) evaluator = new SchemeEval();
 	evaluator->eval("(setlocale LC_CTYPE \"\")");
 }
 

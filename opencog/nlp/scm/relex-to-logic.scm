@@ -91,7 +91,7 @@
 
 (define (advmod-rule verb instance adv adv_instance)
 	(InheritanceLink  (ConceptNode adv_instance) (ConceptNode adv))
-	(InheritanceLink  (SatisfyingSetLink (PredicateNode instance)) (ConceptNode adv_instance))
+	(InheritanceLink  (PredicateNode instance) (ConceptNode adv_instance))
 	(InheritanceLink  (PredicateNode instance) (PredicateNode verb))
 )
 
@@ -117,14 +117,13 @@
 	(NotLink (PredicateNode instance))
 )
 
-(define (possessive-rule noun noun_instance word word_instance)
+(define (possessive-rule-1 noun noun_instance word)
 	(InheritanceLink (ConceptNode noun_instance) (ConceptNode noun))
-        (InheritanceLink (ConceptNode word_instance) (ConceptNode word))
 	(EvaluationLink
 		(PredicateNode "Possession")
 		(ListLink
 			(ConceptNode noun_instance)
-			(ConceptNode word_instance)
+			(ConceptNode word)
 		)
 	)
 )
@@ -193,21 +192,6 @@
 	)
 )
 
-(define (to-do-rule-3 v1 v1_instance v2 v2_instance v3 v3_instance)
-        (InheritanceLink (ConceptNode v1_instance) (ConceptNode v1))
-        (InheritanceLink (PredicateNode v2_instance) (PredicateNode v2))
-        (InheritanceLink (ConceptNode v3_instance) (ConceptNode v3))
-        (EvaluationLink
-                (PredicateNode v2_instance)
-                (ListLink
-                        (InheritanceLink
-                                (ConceptNode v3_instance)
-                                (ConceptNode v1_instance)
-                        )
-                )
-        )
-)
-
 (define (to-be-rule verb verb_ins adj adj_ins subj subj_ins)
 	(InheritanceLink (PredicateNode verb_ins) (PredicateNode verb))
 	(InheritanceLink (ConceptNode subj_ins) (ConceptNode subj))
@@ -263,7 +247,7 @@
 	(InheritanceLink (PredicateNode verb_instance) (PredicateNode verb))
 	(InheritanceLink (ConceptNode subj_instance) (ConceptNode subj_concept))
 	(InheritanceLink (ConceptNode obj_instance) (ConceptNode obj_concept))
-	(EvaluationLink (stv 1.0 1.0)
+	(EvaluationLink
 		(PredicateNode verb_instance)
 		(ListLink
 			(ConceptNode subj_instance)
@@ -305,36 +289,3 @@
     	)
 )
 
-; Examples: "Socrates is a man", "Cats are animals", "Trees are plants"
-(define (be-inheritance-rule subj_concept subj_instance obj_concept obj_instance)
-	(InheritanceLink (ConceptNode subj_instance) (ConceptNode subj_concept) (stv 1.0 1.0))
-	(InheritanceLink (ConceptNode obj_instance) (ConceptNode obj_concept) (stv 1.0 1.0))
-	(InheritanceLink (ConceptNode subj_instance) (ConceptNode obj_instance) (stv 1.0 1.0))
-)
-
-;Example: "The books were written by Charles Dickens."
-(define (passive-rule1 verb verb_instance obj obj_instance passive_obj passive_obj_instance)
-        (InheritanceLink (PredicateNode verb_instance) (PredicateNode verb))
-        (InheritanceLink (ConceptNode obj_instance) (ConceptNode obj))
-        (InheritanceLink (ConceptNode passive_obj_instance) (ConceptNode passive_obj))
-        (EvaluationLink 
-                (PredicateNode verb_instance)
-                (ListLink
-                        (ConceptNode passive_obj_instance)
-                        (ConceptNode obj_instance)
-                )
-      )
-)
-
-;Example: "The books are published."
-(define (passive-rule2 verb verb_instance obj obj_instance)
-        (InheritanceLink (PredicateNode verb_instance) (PredicateNode verb))
-        (InheritanceLink (ConceptNode obj_instance) (ConceptNode obj))
-        (EvaluationLink 
-                (PredicateNode verb_instance)
-                (ListLink
-                        (VariableNode "$x")
-                        (ConceptNode obj_instance)
-                )
-        )
-)

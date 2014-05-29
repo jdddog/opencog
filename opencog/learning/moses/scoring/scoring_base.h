@@ -29,11 +29,12 @@
 #include <fstream>
 #include <functional>
 
-#include <boost/accumulators/accumulators.hpp>
-#include <boost/ptr_container/ptr_vector.hpp>
 #include <boost/range/numeric.hpp>
 #include <boost/range/algorithm_ext/push_back.hpp>
 #include <boost/range/algorithm/min_element.hpp>
+#include <boost/accumulators/accumulators.hpp>
+#include <boost/accumulators/statistics/stats.hpp>
+#include <boost/accumulators/statistics/weighted_skewness.hpp>
 
 #include <opencog/util/lru_cache.h>
 #include <opencog/util/algorithm.h>
@@ -42,6 +43,7 @@
 
 #include <opencog/comboreduct/table/table.h>
 
+#include "../moses/using.h"
 #include "../moses/types.h"
 #include "../representation/representation.h"
 
@@ -88,7 +90,7 @@ struct cscore_base : public unary_function<combo_tree, composite_score>
     // lower, it's good to compute it in order to stop deme search. If
     // ignore_idxs is set then best_possible_score() can be recalled
     // to get thta new ma score value.
-    virtual void ignore_idxs(const std::set<arity_t>&) const {}
+    virtual void ignore_idxs(const set<arity_t>&) const {}
 
     virtual ~cscore_base(){}
 };
@@ -115,7 +117,7 @@ struct bscore_base : public unary_function<combo_tree, penalized_bscore>
     // features are ignored. The features are indicated as set of
     // indices (from 0). The method provided by default does nothing
     // (no speed-up).
-    virtual void ignore_idxs(const std::set<arity_t>&) const {}
+    virtual void ignore_idxs(const set<arity_t>&) const {}
 
     virtual void set_complexity_coef(score_t complexity_ratio);
     virtual void set_complexity_coef(unsigned alphabet_size, float p);
@@ -201,7 +203,7 @@ struct bscore_based_cscore : public cscore_base
     // In case the fitness function can be sped-up when certain
     // features are ignored. The features are indicated as set of
     // indices (from 0).
-    void ignore_idxs(const std::set<arity_t>& idxs) const
+    void ignore_idxs(const set<arity_t>& idxs) const
     {
         _pbscorer.ignore_idxs(idxs);
     }
@@ -233,7 +235,7 @@ struct multibscore_based_bscore : public bscore_base
     // In case the fitness function can be sped-up when certain
     // features are ignored. The features are indicated as set of
     // indices (from 0).
-    void ignore_idxs(const std::set<arity_t>&) const;
+    void ignore_idxs(const set<arity_t>&) const;
 
 protected:
     const BScorerSeq& _bscorers;
